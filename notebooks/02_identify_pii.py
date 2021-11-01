@@ -50,8 +50,10 @@ rules
 
 import dlt
 
-@dlt.create_table()
-def bronze():
+@dlt.view(
+comment="Raw data that may potentially contain PII"
+)
+def raw():
   return (
     spark
       .readStream
@@ -62,9 +64,11 @@ def bronze():
 
 # COMMAND ----------
 
-@dlt.create_table()
+@dlt.table(
+  comment="Data that has been processed and successfully evaluated against our Expectations"
+)
 @dlt.expect_all_or_drop(rules) 
-def silver():
+def processed():
   return dlt.read_stream("bronze")
 
 # COMMAND ----------
@@ -80,17 +84,20 @@ def failed_expectations(expectations):
 
 import pyspark.sql.functions as F
 
-@dlt.create_table()
-def pii_quarantine():
+@dlt.view(
+ comment="Data that has been quarantined for potentially containing PII"
+)
+def quarantine():
   return (
       dlt
         .read_stream("bronze")
         .withColumn("_expectations", F.array([F.expr(value) for key, value in rules.items()]))
-        .withColumn("failed_expectations", failed_expectations("failed_expectations"))
+        .withColumn("failed_expectations", failed_expectations("_expectations"))
         .filter(F.size("_expectations") > 0)
   )
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC SELECT * FROM aweaver.quarantine
+#@dlt.table
+#def chicago_customers():
+#  return spark.sql("SELECT * FROM LIVE.customers_cleaned WHERE city = 'Chicago'")
