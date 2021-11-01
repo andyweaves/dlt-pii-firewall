@@ -5,13 +5,13 @@ input_path = dbutils.widgets.get("input_path")
 # COMMAND ----------
 
 dbutils.fs.put("/aweaver/expectations/pii_identification.csv", """
-name,constraint
-{} is not creditcard,CAST({} AS STRING) NOT REGEXP("^(?:4[0-9]{12}(?:[0-9]{3})?|[25][1-7][0-9]{14}|6(?:011|5[0-9][0-9])[0-9]{12}|3[47][0-9]{13}|3(?:0[0-5]|[68][0-9])[0-9]{11}|(?:2131|1800|35\d{3})\d{11})$") AS result
-{} is not ssn,CAST({} AS STRING) NOT REGEXP("^\\\\d{3}-\\\\d{2}-\\\\d{4}$") AS result
-{} is not expiry date,CAST({} AS STRING) NOT REGEXP("^\\\\d{2}/\\\\d{2}$") AS result
-{} is not security code,CAST({} AS STRING) NOT REGEXP("^\\\\d{3}$") AS result
-{} is not email address,CAST({} AS STRING) NOT REGEXP("\\\\w@\\\\w.\\\\w") AS result
-{} is not ipv4,CAST({} AS STRING) NOT REGEXP("^((?:[0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])[.]){3}(?:[0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])$") AS result
+name,constraint,action
+{} may contain creditcard,CAST({} AS STRING) NOT REGEXP("^(?:4[0-9]{12}(?:[0-9]{3})?|[25][1-7][0-9]{14}|6(?:011|5[0-9][0-9])[0-9]{12}|3[47][0-9]{13}|3(?:0[0-5]|[68][0-9])[0-9]{11}|(?:2131|1800|35\d{3})\d{11})$") AS result,"concat('XXXXXXXXXXXXXXXX', substr({}, -3, 3))"
+{} may contain ssn,CAST({} AS STRING) NOT REGEXP("^\\\\d{3}-\\\\d{2}-\\\\d{4}$") AS result,"XXX"
+{} may contain expiry date,CAST({} AS STRING) NOT REGEXP("^\\\\d{2}/\\\\d{2}$") AS result,"regexp_replace({}, '^(0[1-9]|1[0-2])', 'XX')"
+{} may contain security code,CAST({} AS STRING) NOT REGEXP("^\\\\d{3}$") AS result,"XXX"
+{} may contain email address,CAST({} AS STRING) NOT REGEXP("\\\\w@\\\\w.\\\\w") AS result,"regexp_extract({}, '^.*@(.*)$', 1)"
+{} may contain ipv4,CAST({} AS STRING) NOT REGEXP("^((?:[0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])[.]){3}(?:[0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])$") AS result,"XXX"
 """, overwrite=True)
 
 # COMMAND ----------
@@ -26,25 +26,31 @@ name,constraint
 import os
 from pyspark.sql.functions import col
 
-def get_rules_for_dataset(columns, expectations):
+def get_rules_and_actions(columns, expectations_file):
   """
     loads data quality rules from csv file
-    :param tag: group to match
-    :return: dictionary of rules that matched the group
+    :param columns: 
+    :param expectations_file: 
+    :return: dictionary of rules 
   """
-  rules = {}
-  raw_rules = spark.read.csv(expectations, header=True, inferSchema=True).collect()
+  rules, actions = {}, {}
+  raw_rules = spark.read.csv(expectations_file, header=True, inferSchema=True).collect()
   for col in columns:
     for row in raw_rules:
-      rules[row["name"].replace("{}", col)] = row["constraint"].replace("{}", col)
-  return rules
+      rules[row["name"].replace("{}", f"`{col}`")] = row["constraint"].replace("{}", f"`{col}`")
+      actions[row["name"].replace("{}", f"`{col}`")] = row["action"].replace("{}", f"`{col}`")
+  return rules, actions
 
 # COMMAND ----------
 
 columns = spark.read.parquet(input_path).columns
 schema = spark.read.parquet(input_path).schema
-rules = get_rules_for_dataset(columns, "file:/dbfs/aweaver/expectations/pii_identification.csv") #f"file:{os.path.dirname(os.getcwd())}/expectations/pii_identification.csv"
+rules, actions = get_rules_and_actions(columns, "file:/dbfs/aweaver/expectations/pii_identification.csv") #f"file:{os.path.dirname(os.getcwd())}/expectations/pii_identification.csv"
 rules
+
+# COMMAND ----------
+
+actions
 
 # COMMAND ----------
 
@@ -53,7 +59,7 @@ import dlt
 @dlt.view(
 comment="Raw data that may potentially contain PII"
 )
-def raw():
+def staging():
   return (
     spark
       .readStream
@@ -68,8 +74,8 @@ def raw():
   comment="Data that has been processed and successfully evaluated against our Expectations"
 )
 @dlt.expect_all_or_drop(rules) 
-def processed():
-  return dlt.read_stream("bronze")
+def clean():
+  return dlt.read_stream("staging")
 
 # COMMAND ----------
 
@@ -90,14 +96,31 @@ import pyspark.sql.functions as F
 def quarantine():
   return (
       dlt
-        .read_stream("bronze")
-        .withColumn("_expectations", F.array([F.expr(value) for key, value in rules.items()]))
-        .withColumn("failed_expectations", failed_expectations("_expectations"))
-        .filter(F.size("_expectations") > 0)
+        .read_stream("staging")
+        .withColumn("_failed_expectations", F.array([F.expr(value) for key, value in rules.items()]))
+        .withColumn("failed_expectations", failed_expectations("_failed_expectations"))
+        .filter(F.size("failed_expectations") > 0)
   )
 
 # COMMAND ----------
 
-#@dlt.table
-#def chicago_customers():
-#  return spark.sql("SELECT * FROM LIVE.customers_cleaned WHERE city = 'Chicago'")
+#failed_expectations = [row['failed_expectations'] for row in spark.sql("SELECT explode(failed_expectations) AS failed_expectations from aweaver.quarantine").distinct().collect()]
+#failed_expectations
+
+# COMMAND ----------
+
+@dlt.table
+def clean_processed():
+  return spark.sql("SELECT * FROM aweaver.quarantine")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC https://docs.databricks.com/release-notes/runtime/9.0.html#exclude-columns-in-select--public-preview
+
+# COMMAND ----------
+
+#df = spark.sql(f"""
+#SELECT {', '.join(columns)} FROM aweaver.quarantine
+#""")
+#display(df)
