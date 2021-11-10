@@ -57,7 +57,8 @@ comment="Raw data that may potentially contain PII"
 def staging():
   return (
     spark
-      .readStream
+      .read
+      #.readStream
       .format("parquet")
       .schema(schema)
       .load(input_path)
@@ -66,12 +67,12 @@ def staging():
 # COMMAND ----------
 
 @dlt.table(
-  comment="Data that has been processed and successfully evaluated against our Expectations",
+  comment="Data that has been processed and successfully evaluated against our PII detection expectations",
   path=f"{table_path}/clean/"
 )
 @dlt.expect_all_or_drop(rules) 
 def clean():
-  return dlt.read_stream("staging")
+  return dlt.read("staging")#.read_stream("staging")
 
 # COMMAND ----------
 
@@ -86,14 +87,27 @@ def failed_expectations(expectations):
 
 import pyspark.sql.functions as F
 
-@dlt.view(
- comment="Data that has been quarantined for potentially containing PII"
+@dlt.table(
+ comment="Data that has been quarantined for potentially containing PII",
+ path=f"{table_path}/quarantine/"
 )
 def quarantine():
   return (
       dlt
-        .read_stream("staging")
+        .read("staging")
+        #.read_stream("staging")
         .withColumn("failed_expectations", F.array([F.expr(value) for key, value in rules.items()]))
         .withColumn("failed_expectations", failed_expectations("failed_expectations"))
         .filter(F.size("failed_expectations") > 0)
   )
+
+# COMMAND ----------
+
+#@dlt.table(
+#  path=f"{table_path}/failed_expectations/"
+#)
+#def failed_expectations():
+#  return (dlt
+#          .read("quarantine")
+#          .select(current_timestamp().alias("timestamp"), explode(col("failed_expectations")).alias("expectation")).distinct()
+#         )
