@@ -4,10 +4,14 @@ table_path = spark.conf.get("table_path")
 
 # COMMAND ----------
 
+#display(spark.read.parquet("dbfs:/aweaver/customer_raw"))
+
+# COMMAND ----------
+
 dbutils.fs.put("/FileStore/andrew.weaver@databricks.com/dlt/customers/expectations/pii_identification.csv", """
 name,constraint,action
 {} may contain creditcard,CAST({} AS STRING) NOT REGEXP("^(?:4[0-9]{12}(?:[0-9]{3})?|[25][1-7][0-9]{14}|6(?:011|5[0-9][0-9])[0-9]{12}|3[47][0-9]{13}|3(?:0[0-5]|[68][0-9])[0-9]{11}|(?:2131|1800|35\d{3})\d{11})$") AS result,"concat('XXXXXXXXXXXXXXXX', substr({}, -3, 3)) AS {}"
-{} may contain ssn,CAST({} AS STRING) NOT REGEXP("^\\\\d{3}-\\\\d{2}-\\\\d{4}$") AS result,"'[REDACTED]' AS {}"
+{} may contain ssn,CAST({} AS STRING) NOT REGEXP("^\\\\d{3}-\\\\d{2}-\\\\d{4}$") AS result,"sha2({}, 512) AS {}"
 {} may contain expiry date,CAST({} AS STRING) NOT REGEXP("^\\\\d{2}/\\\\d{2}$") AS result,"regexp_replace({}, '^(0[1-9]|1[0-2])', 'XX') AS {}"
 {} may contain security code,CAST({} AS STRING) NOT REGEXP("^\\\\d{3}$") AS result,"'[REDACTED]' AS {}"
 {} may contain email address,CAST({} AS STRING) NOT REGEXP("\\\\w@\\\\w.\\\\w") AS result,"regexp_extract({}, '^.*@(.*)$', 1) AS {}"
@@ -43,6 +47,14 @@ def events_to_dataframe(df):
 
 # COMMAND ----------
 
+# MAGIC %sql
+# MAGIC -- These don't work right now, as a result of the regex escaping in python...? 
+# MAGIC --SELECT CAST(address AS STRING) NOT REGEXP("^(.+)[,\\s]+(.+?)\s*(\d{5})?$") AS result FROM aw
+# MAGIC --SELECT CAST(phone_number AS STRING) NOT REGEXP("^(\\(?\\d\\d\\d\\)?)(|-|\\.)?\\d\\d\\d( |-|\\.)?\\d{4,4}(( |-|\\.)?[ext\\.]+ ?\\d+)?$") AS result FROM aw 
+# MAGIC --SELECT CAST(iban AS STRING) NOT REGEXP("[a-zA-Z]{2}[0-9]{2}[a-zA-Z0-9]{4}[0-9]{7}([a-zA-Z0-9]?){0,16}") AS result FROM aw
+
+# COMMAND ----------
+
 import dlt
 import pyspark.sql.functions as F
 
@@ -61,14 +73,6 @@ def metrics():
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC -- These don't work right now, as a result of the regex escaping bug... need to add them back when they do...
-# MAGIC --SELECT CAST(address AS STRING) NOT REGEXP("^(.+)[,\\s]+(.+?)\s*(\d{5})?$") AS result FROM aw
-# MAGIC --SELECT CAST(phone_number AS STRING) NOT REGEXP("^(\\(?\\d\\d\\d\\)?)(|-|\\.)?\\d\\d\\d( |-|\\.)?\\d{4,4}(( |-|\\.)?[ext\\.]+ ?\\d+)?$") AS result FROM aw 
-# MAGIC --SELECT CAST(iban AS STRING) NOT REGEXP("[a-zA-Z]{2}[0-9]{2}[a-zA-Z0-9]{4}[0-9]{7}([a-zA-Z0-9]?){0,16}") AS result FROM aw
-
-# COMMAND ----------
-
 import os
 from pyspark.sql.functions import col
 
@@ -84,18 +88,16 @@ def get_rules_and_actions(columns, expectations_file):
   for col in columns:
     for row in raw_rules:
       rules[row["name"].replace("{}", f"`{col}`")] = row["constraint"].replace("{}", f"`{col}`")
+      #actions.append((row["name"].replace("{}", f"`{col}`"), row["action"].replace("{}", f"`{col}`")))
       actions[row["name"].replace("{}", f"`{col}`")] = row["action"].replace("{}", f"`{col}`")
   return rules, actions
 
 # COMMAND ----------
 
-#input_path = "dbfs:/aweaver/customer_raw"
-
-# COMMAND ----------
-
 columns = spark.read.parquet(input_path).columns
 schema = spark.read.parquet(input_path).schema
-rules, actions = get_rules_and_actions(columns, "file:/dbfs/FileStore/andrew.weaver@databricks.com/dlt/customers/expectations/pii_identification.csv") #f"file:{os.path.dirname(os.getcwd())}/expectations/pii_identification.csv"
+rules, actions = get_rules_and_actions(columns, "file:/dbfs/FileStore/andrew.weaver@databricks.com/dlt/customers/expectations/pii_identification.csv") 
+#f"file:{os.path.dirname(os.getcwd())}/expectations/pii_identification.csv"
 
 # COMMAND ----------
 
@@ -148,14 +150,19 @@ def quarantine():
 
 # COMMAND ----------
 
+from pyspark.sql.functions import regexp_extract
+
 def get_dlt_sql(actions, columns):
   
-  failed_expectations = [row['expectation'] for row in spark.read.format("delta").load(f"{table_path}/metrics/").select("expectation").distinct().where("failed >= 1").collect()]
-  return list({k: actions[k] for k in failed_expectations}.values()) #+ columns
+  expectation_results = spark.read.format("delta").load(f"{table_path}/metrics/").select("expectation").distinct().where("failed >= 1").withColumn("failed_column", regexp_extract(col("expectation"), "\`(.*?)\`", 1)).collect()
+  
+  failed_expectations = [row['expectation'] for row in expectation_results]
+  failed_columns = [row['failed_column'] for row in expectation_results]
+  return [x for x in columns if x not in failed_columns] + list({k: actions[k] for k in failed_expectations}.values()) 
 
 # COMMAND ----------
 
-#dlt_sql = get_dlt_sql(actions, columns)
+dlt_sql = get_dlt_sql(actions, columns)
 
 # COMMAND ----------
 
@@ -164,9 +171,9 @@ def get_dlt_sql(actions, columns):
 )
 def clean_processed():
   
-  return dlt.read("quarantine").selectExpr("*")
+  return dlt.read("quarantine").selectExpr(dlt_sql)
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC --SELECT * FROM aweaver_dlt.clean_processed
+# MAGIC SELECT * FROM aweaver_dlt.clean_processed
