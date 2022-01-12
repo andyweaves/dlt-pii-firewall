@@ -1,5 +1,10 @@
 # Databricks notebook source
 # MAGIC %sql
+# MAGIC --CREATE DATABASE aweaver_dlt_2
+
+# COMMAND ----------
+
+# MAGIC %sql
 # MAGIC DROP DATABASE IF EXISTS aweaver_dlt CASCADE;
 # MAGIC --CREATE DATABASE IF NOT EXISTS aweaver_dlt
 # MAGIC --LOCATION "dbfs:/aweaver/delta/customers";

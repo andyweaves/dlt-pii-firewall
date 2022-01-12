@@ -17,6 +17,8 @@ table_path = spark.conf.get("table_path")
 
 # COMMAND ----------
 
+# Write a CSV file of expectation name, constraint and action to take if the expectation fails. When DLT fully supports repos we'll load this from the file that's checked in to source control...
+
 dbutils.fs.put("/FileStore/andrew.weaver@databricks.com/dlt/customers/expectations/pii_identification.csv", """
 name,constraint,action
 {} may contain creditcard,CAST({} AS STRING) NOT REGEXP("^(?:4[0-9]{12}(?:[0-9]{3})?|[25][1-7][0-9]{14}|6(?:011|5[0-9][0-9])[0-9]{12}|3[47][0-9]{13}|3(?:0[0-5]|[68][0-9])[0-9]{11}|(?:2131|1800|35\d{3})\d{11})$") AS result,"concat('XXXXXXXXXXXXXXXX', substr({}, -3, 3)) AS {}"
@@ -31,7 +33,6 @@ name,constraint,action
 
 # MAGIC %sql
 # MAGIC -- Todo... get these to work too...
-# MAGIC 
 # MAGIC --SELECT CAST(address AS STRING) NOT REGEXP('^(.+)[,\\\\s]+(.+?)\\\s*(\\\d{5})?$') AS result
 # MAGIC --SELECT CAST(phone_number AS STRING) NOT REGEXP("^(\\(?\\d\\d\\d\\)?)(|-|\\.)?\\d\\d\\d( |-|\\.)?\\d{4,4}(( |-|\\.)?[ext\\.]+ ?\\d+)?$") AS result 
 # MAGIC --SELECT CAST(iban AS STRING) NOT REGEXP("[a-zA-Z]{2}[0-9]{2}[a-zA-Z0-9]{4}[0-9]{7}([a-zA-Z0-9]?){0,16}") AS result 
@@ -151,7 +152,7 @@ def failed_expectations(expectations):
 
 import pyspark.sql.functions as F
 
-@dlt.view(
+@dlt.table(
  comment="Data that has been quarantined for potentially containing PII"
 )
 def quarantine():
@@ -190,27 +191,15 @@ def get_dlt_sql_2(actions, columns):
 
 # COMMAND ----------
 
-@dlt.table(
-  path=f"{table_path}/clean_processed/"
-)
-def clean_processed():
-  
-  sql = get_dlt_sql_2(actions, columns)
-  
-  print(f"Dynamic SQL: {dlt_sql}")
-  
-  return dlt.read("quarantine").selectExpr(sql)
+# Commenting this last step out for now to try the multi-task jobs approach!
 
-# COMMAND ----------
-
-#display(spark.sql("SELECT CAST(address AS STRING) NOT REGEXP('^(.+)[,\\\\s]+(.+?)\\\s*(\\\d{5})?$') AS result FROM aweaver_dlt.clean_processed"))
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC --SHOW TABLES IN aweaver_dlt
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC --SELECT * FROM aweaver_dlt.clean_processed
+#@dlt.table(
+#  path=f"{table_path}/clean_processed/"
+#)
+#def clean_processed():
+#  
+#  sql = get_dlt_sql_2(actions, columns)
+#  
+#  print(f"Dynamic SQL: {dlt_sql}")
+#  
+#  return dlt.read("quarantine").selectExpr(sql)
