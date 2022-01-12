@@ -1,2 +1,2 @@
 # dlt-pii-identification
-Demo of using Delta Live Tables to identify potential PII data
+Demo of using [Delta Live Tables](https://databricks.com/discover/pages/getting-started-with-delta-live-tables) to identify potential PII data
