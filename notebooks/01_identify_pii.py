@@ -99,7 +99,6 @@ def get_rules_and_actions(columns, expectations_file):
   for col in columns:
     for row in raw_rules:
       rules[row["name"].replace("{}", f"`{col}`")] = row["constraint"].replace("{}", f"`{col}`")
-      #actions.append((row["name"].replace("{}", f"`{col}`"), row["action"].replace("{}", f"`{col}`")))
       actions[row["name"].replace("{}", f"`{col}`")] = row["action"].replace("{}", f"`{col}`")
   return rules, actions
 
