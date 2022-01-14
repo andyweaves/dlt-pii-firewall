@@ -1,10 +1,4 @@
 # Databricks notebook source
-# MAGIC %md
-# MAGIC ## todo
-# MAGIC 1. Test regexes and come up with suitable redaction
-
-# COMMAND ----------
-
 input_path = spark.conf.get("input_path")
 table_path = spark.conf.get("table_path")
 
@@ -41,12 +35,18 @@ from pyspark.sql.functions import explode, regexp_extract
 
 def get_dlt_sql(actions, columns):
 
-  expectation_results = spark.read.format("delta").load(f"{table_path}/quarantine/").select(explode("failed_expectations").alias("expectation")).distinct().withColumn("failed_column", regexp_extract(col("expectation"), "\`(.*?)\`", 1)).collect()
-
-  failed_expectations = [row['expectation'] for row in expectation_results]
-  failed_columns = [row['failed_column'] for row in expectation_results]
+  # Drop duplicates because otherwise we'll need to handle duplicate columns in the downstream tables, which will get messy
+  pdf = spark.read.format("delta").load(f"{table_path}/quarantine/").select(explode("failed_expectations").alias("expectation")).distinct().withColumn("failed_column", regexp_extract(col("expectation"), "\`(.*?)\`", 1)).toPandas().drop_duplicates(subset = ["failed_column"])
+  
+  failed_columns = pdf["failed_column"].tolist()
+  failed_expectations = pdf["expectation"].tolist()
   
   return [x for x in columns if x not in failed_columns] + list({k: actions[k] for k in failed_expectations}.values()) 
+
+# COMMAND ----------
+
+sql = get_dlt_sql(actions, columns)
+sql
 
 # COMMAND ----------
 
@@ -61,4 +61,4 @@ def clean_processed():
   
   print(f"Dynamic SQL: {sql}")
   
-  return spark.read.format("delta").load(f"{table_path}/quarantine/").selectExpr(sql).union(spark.read.format("delta").load(f"{table_path}/clean/"))
+  return spark.read.format("delta").load(f"{table_path}/quarantine/").selectExpr(sql)#.union(spark.read.format("delta").load(f"{table_path}/clean/"))

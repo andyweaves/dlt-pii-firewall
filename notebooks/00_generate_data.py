@@ -4,10 +4,10 @@
 # COMMAND ----------
 
 dbutils.widgets.dropdown("NUM_ROWS", defaultValue="1000", choices=["50", "100", "1000", "10000", "250000"])
-dbutils.widgets.text("OUTPUR_DIR", defaultValue="dbfs:/dlt_pii/customer_raw")
+dbutils.widgets.text("OUTPUT_DIR", defaultValue="dbfs:/dlt_pii/customer_raw")
 
 NUM_ROWS = int(dbutils.widgets.get("NUM_ROWS"))
-OUTPUT_DIR = dbutils.widgets.get("OUTPUR_DIR")
+OUTPUT_DIR = dbutils.widgets.get("OUTPUT_DIR")
 
 # COMMAND ----------
 

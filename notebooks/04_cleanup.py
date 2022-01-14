@@ -4,14 +4,19 @@ dbutils.widgets.text("DELTA_DIR", "dbfs:/dlt_pii/customer_delta")
 dbutils.widgets.text("STORAGE_DIR", "dbfs:/dlt_pii/customer_pipeline")
 dbutils.widgets.text("DATABASE_NAME", "dlt_pii")
 dbutils.widgets.dropdown("CREATE_NEW_DATABASE", defaultValue="True", choices=["True", "False"])
+dbutils.widgets.dropdown("CLEANUP_INPUT", defaultValue="False", choices=["True", "False"])
 
 INPUT_DIR = dbutils.widgets.get("INPUT_DIR")
 DELTA_DIR = dbutils.widgets.get("DELTA_DIR")
 STORAGE_DIR = dbutils.widgets.get("STORAGE_DIR")
 DATABASE_NAME = dbutils.widgets.get("DATABASE_NAME")
 CREATE_NEW_DATABASE = dbutils.widgets.get("CREATE_NEW_DATABASE") == "True"
+CLEANUP_INPUT = dbutils.widgets.get("CLEANUP_INPUT") == "True"
 
-DIRS = [INPUT_DIR, DELTA_DIR, STORAGE_DIR]
+DIRS = [DELTA_DIR, STORAGE_DIR]
+
+if CLEANUP_INPUT:
+  DIRS.append(INPUT_DIR)
 
 # COMMAND ----------
 

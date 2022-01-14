@@ -1,7 +1,7 @@
 # Databricks notebook source
 dbutils.widgets.text("DATABASE_NAME", "dlt_pii")
 dbutils.widgets.text("TABLE_NAME", "quarantine")
-dbutils.widgets.dropdown("VACUUM_RETENTION", "0", ["0", "1", "8", "24", "168"])
+dbutils.widgets.dropdown("VACUUM_RETENTION", defaultValue="0", choices=["0", "1", "8", "24", "168"])
 
 DATABASE_NAME = dbutils.widgets.get("DATABASE_NAME")
 TABLE_NAME = dbutils.widgets.get("TABLE_NAME")

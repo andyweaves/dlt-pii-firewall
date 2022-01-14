@@ -1,16 +1,9 @@
 # Databricks notebook source
 # MAGIC %md
 # MAGIC ## todo...
-# MAGIC 
+# MAGIC 1. Get metrics table to work again
 # MAGIC 2. Add regex for DOB
 # MAGIC 3. Add regex for Age
-# MAGIC 4. Add regex for Phone Number
-# MAGIC 5. Add regex for US Address
-# MAGIC 6. Try out regexes on freetext fields?
-
-# COMMAND ----------
-
-#display(spark.read.parquet("dbfs:/aweaver/customer_raw"))
 
 # COMMAND ----------
 
@@ -29,60 +22,31 @@ name,constraint,action
 {} may contain security code,CAST({} AS STRING) NOT REGEXP("^\\\\d{3}$") AS result,"'XXX' AS {}"
 {} may contain email address,CAST({} AS STRING) NOT REGEXP("\\\\w@\\\\w.\\\\w") AS result,"regexp_extract({}, '^.*@(.*)$', 1) AS {}"
 {} may contain ipv4,CAST({} AS STRING) NOT REGEXP("^((?:[0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])[.]){3}(?:[0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])$") AS result,"sha2({}, 512) AS {}"
-{} may contain iban,CAST({} AS STRING) NOT REGEXP(\\\\b([A-Z]{2}[ \-]?[0-9]{2})(?=(?:[ \-]?[A-Z0-9]){9,30})((?:[ \-]?[A-Z0-9]{3,5}){2,7})([ \-]?[A-Z0-9]{1,3})?\\\\b) AS result,"regexp_replace({}, '\\\\b([A-Z]{2}[ \-]?[0-9]{2})(?=(?:[ \-]?[A-Z0-9]){9,30})((?:[ \-]?[A-Z0-9]{3,5}){2,7})([ \-]?[A-Z0-9]{1,3})?\\\\b', concat(substr({}, 0, 2), 'XXXXXXXXXXXXXXXX', substr({}, -3, 3))) AS {}"
+{} may contain iban,CAST({} AS STRING) NOT REGEXP("[a-zA-Z]{2}[0-9]{2}[a-zA-Z0-9]{4}[0-9]{7}([a-zA-Z0-9]?)+") AS result,"regexp_replace({}, '[a-zA-Z]{2}[0-9]{2}[a-zA-Z0-9]{4}[0-9]{7}([a-zA-Z0-9]?)+', concat(substr({}, 0, 2), 'XXXXXXXXXXXXXXXX', substr({}, -3, 3))) AS {}"
+{} may contain us_address,CAST({} AS STRING) NOT REGEXP("^(\d+) ?([A-Za-z](?= ))? (.*?) ([^ ]+?) ?((?<= ))? ?((?<= )\d*)?$") AS result,"'<US ADDRESS>' AS {}"
+{} may contain phone_number,CAST({} AS STRING) NOT REGEXP("((\\\\(\\\\d{3}\\\\) ?)|(\\\\d{3}-))?\\\\d{3}-\\\\d{4}") AS result,"regexp_replace({}, '[0-9]*', '*') AS {}"
 """, overwrite=True)
 
 # COMMAND ----------
 
+df = spark.read.parquet("dbfs:/dlt_pii/customer_raw")
+
+# COMMAND ----------
+
+df.createOrReplaceTempView("test")
+
+# COMMAND ----------
+
+df
+
+# COMMAND ----------
+
 # MAGIC %sql
-# MAGIC -- Todo... get these to work too...
-# MAGIC --SELECT CAST(address AS STRING) NOT REGEXP('^(.+)[,\\\\s]+(.+?)\\\s*(\\\d{5})?$') AS result
-# MAGIC --SELECT CAST(phone_number AS STRING) NOT REGEXP("^(\\(?\\d\\d\\d\\)?)(|-|\\.)?\\d\\d\\d( |-|\\.)?\\d{4,4}(( |-|\\.)?[ext\\.]+ ?\\d+)?$") AS result 
+# MAGIC SELECT CAST(address AS STRING) NOT REGEXP('^(\d+) ?([A-Za-z](?= ))? (.*?) ([^ ]+?) ?((?<= ))? ?((?<= )\d*)?$') AS result FROM test
 
 # COMMAND ----------
 
-import pandas as pd
-import json
-from pyspark.sql.types import *
-
-event_schema = StructType([
-  StructField('timestamp', TimestampType(), True),
-  StructField('step', StringType(), True),
-  StructField('expectation', StringType(), True),
-  StructField('passed', IntegerType(), True),
-  StructField('failed', IntegerType(), True),
-])
- 
-def events_to_dataframe(df):
-  d = []
-  group_key = df['timestamp'].iloc[0]
-  for i, r in df.iterrows():
-    json_obj = json.loads(r['details'])
-    try:
-      expectations = json_obj['flow_progress']['data_quality']['expectations']
-      for expectation in expectations:
-        d.append([group_key, expectation['dataset'], expectation['name'], expectation['passed_records'], expectation['failed_records']])
-    except:
-      pass
-  return pd.DataFrame(d, columns=['timestamp', 'step', 'expectation', 'passed', 'failed'])
-
-# COMMAND ----------
-
-import dlt
-import pyspark.sql.functions as F
-
-@dlt.table(
- path=f"{table_path}/metrics/"
-)
-def metrics():
-    return (
-    spark
-      .read
-      .format("delta")
-      .load("/FileStore/andrew.weaver@databricks.com/dlt/customers/system/events")
-      .filter(F.col("event_type") == "flow_progress")
-      .groupBy("timestamp").applyInPandas(events_to_dataframe, schema=event_schema)
-      .select("timestamp", "step", "expectation", "passed", "failed"))
+display(df.selectExpr("CAST(address AS STRING) NOT REGEXP('^(\d+) ?([A-Za-z](?= ))? (.*?) ([^ ]+?) ?((?<= ))? ?((?<= )\d*)?$') AS result"))
 
 # COMMAND ----------
 
@@ -100,6 +64,7 @@ def get_rules_and_actions(columns, expectations_file):
   raw_rules = spark.read.csv(expectations_file, header=True, inferSchema=True).collect()
   for col in columns:
     for row in raw_rules:
+      #print(f"ROW: {row}")
       rules[row["name"].replace("{}", f"`{col}`")] = row["constraint"].replace("{}", f"`{col}`")
       actions[row["name"].replace("{}", f"`{col}`")] = row["action"].replace("{}", f"`{col}`")
   return rules, actions
@@ -112,6 +77,9 @@ rules, actions = get_rules_and_actions(columns, "file:/dbfs/FileStore/andrew.wea
 #f"file:{os.path.dirname(os.getcwd())}/expectations/pii_identification.csv"
 
 # COMMAND ----------
+
+import dlt
+import pyspark.sql.functions as F
 
 @dlt.view(
 comment="Raw data that may potentially contain PII"
@@ -160,3 +128,45 @@ def quarantine():
         .withColumn("failed_expectations", failed_expectations("failed_expectations"))
         .filter(F.size("failed_expectations") > 0)
   )
+
+# COMMAND ----------
+
+import pandas as pd
+import json
+from pyspark.sql.types import *
+
+event_schema = StructType([
+  StructField('timestamp', TimestampType(), True),
+  StructField('step', StringType(), True),
+  StructField('expectation', StringType(), True),
+  StructField('passed', IntegerType(), True),
+  StructField('failed', IntegerType(), True),
+])
+ 
+def events_to_dataframe(df):
+  d = []
+  group_key = df['timestamp'].iloc[0]
+  for i, r in df.iterrows():
+    json_obj = json.loads(r['details'])
+    try:
+      expectations = json_obj['flow_progress']['data_quality']['expectations']
+      for expectation in expectations:
+        d.append([group_key, expectation['dataset'], expectation['name'], expectation['passed_records'], expectation['failed_records']])
+    except:
+      pass
+  return pd.DataFrame(d, columns=['timestamp', 'step', 'expectation', 'passed', 'failed'])
+
+# COMMAND ----------
+
+# @dlt.table(
+#  path=f"{table_path}/metrics/"
+# )
+# def metrics():
+#     return (
+#     spark
+#       .read
+#       .format("delta")
+#       .load("dbfs:/dlt_pii/customer_pipeline/system/events")
+#       .filter(F.col("event_type") == "flow_progress")
+#       .groupBy("timestamp").applyInPandas(events_to_dataframe, schema=event_schema)
+#       .select("timestamp", "step", "expectation", "passed", "failed"))
