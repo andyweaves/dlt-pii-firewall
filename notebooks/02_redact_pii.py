@@ -1,4 +1,10 @@
 # Databricks notebook source
+# MAGIC %md
+# MAGIC ## todo
+# MAGIC 1. Test regexes and come up with suitable redaction
+
+# COMMAND ----------
+
 input_path = spark.conf.get("input_path")
 table_path = spark.conf.get("table_path")
 
@@ -33,9 +39,9 @@ rules, actions = get_rules_and_actions(columns, "file:/dbfs/FileStore/andrew.wea
 
 from pyspark.sql.functions import explode, regexp_extract
 
-def get_dlt_sql_2(actions, columns):
+def get_dlt_sql(actions, columns):
 
-  expectation_results = spark.table("aweaver_dlt_2.quarantine").select(explode("failed_expectations").alias("expectation")).distinct().withColumn("failed_column", regexp_extract(col("expectation"), "\`(.*?)\`", 1)).collect()
+  expectation_results = spark.read.format("delta").load(f"{table_path}/quarantine/").select(explode("failed_expectations").alias("expectation")).distinct().withColumn("failed_column", regexp_extract(col("expectation"), "\`(.*?)\`", 1)).collect()
 
   failed_expectations = [row['expectation'] for row in expectation_results]
   failed_columns = [row['failed_column'] for row in expectation_results]
@@ -51,18 +57,8 @@ import dlt
 )
 def clean_processed():
   
-  sql = get_dlt_sql_2(actions, columns)
+  sql = get_dlt_sql(actions, columns)
   
   print(f"Dynamic SQL: {sql}")
   
-  return spark.table("aweaver_dlt_2.quarantine").selectExpr(sql)
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC TRUNCATE TABLE aweaver_dlt_2.quarantine
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC --SELECT * FROM aweaver_dlt_2.clean_processed 
+  return spark.read.format("delta").load(f"{table_path}/quarantine/").selectExpr(sql).union(spark.read.format("delta").load(f"{table_path}/clean/"))
