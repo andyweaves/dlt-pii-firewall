@@ -1,5 +1,0 @@
-name,constraint
-{}_is_not_creditcard,CAST({} AS STRING) NOT REGEXP("^(?:4[0-9]{12}(?:[0-9]{3})?|[25][1-7][0-9]{14}|6(?:011|5[0-9][0-9])[0-9]{12}|3[47][0-9]{13}|3(?:0[0-5]|[68][0-9])[0-9]{11}|(?:2131|1800|35\d{3})\d{11})$") AS result
-{}_is_not_ssn,CAST({} AS STRING) NOT REGEXP("\\d{3}-\\d{2}-\\d{4}") AS result
-{}_is_not_expiry_date,CAST({} AS STRING) NOT REGEXP("\\d{2}/\\d{2}") AS result
-{}_is_not_security_code,CAST({} AS STRING) NOT REGEXP("\\d{3}") AS result

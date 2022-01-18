@@ -1,33 +1,37 @@
 # Databricks notebook source
-input_path = spark.conf.get("input_path")
-table_path = spark.conf.get("table_path")
+# MAGIC %md
+# MAGIC ## todo
+# MAGIC 
+# MAGIC 1. Get union to work
 
 # COMMAND ----------
 
-import os
-from pyspark.sql.functions import col
+input_path = spark.conf.get("input_path")
+table_path = spark.conf.get("table_path")
+expectations_path = spark.conf.get("expectations_path")
 
-def get_rules_and_actions(columns, expectations_file):
-  """
-    loads data quality rules from csv file
-    :param columns: 
-    :param expectations_file: 
-    :return: dictionary of rules 
-  """
-  rules, actions = {}, {}
-  raw_rules = spark.read.csv(expectations_file, header=True, inferSchema=True).collect()
+# COMMAND ----------
+
+import json
+from pyspark.sql.functions import col
+ 
+def get_expectations(columns, expectations_file, key):
+  
+  results = {}
+  
+  with open(expectations_file, 'r') as f:
+    raw_rules = json.load(f)["expectations"]
   for col in columns:
-    for row in raw_rules:
-      rules[row["name"].replace("{}", f"`{col}`")] = row["constraint"].replace("{}", f"`{col}`")
-      #actions.append((row["name"].replace("{}", f"`{col}`"), row["action"].replace("{}", f"`{col}`")))
-      actions[row["name"].replace("{}", f"`{col}`")] = row["action"].replace("{}", f"`{col}`")
-  return rules, actions
+    for rule in raw_rules:
+      results[rule["name"].replace("{}", f"`{col}`")] = rule[key].replace("{}", f"`{col}`")
+  return results
 
 # COMMAND ----------
 
 columns = spark.read.parquet(input_path).columns
 schema = spark.read.parquet(input_path).schema
-rules, actions = get_rules_and_actions(columns, "file:/dbfs/FileStore/andrew.weaver@databricks.com/dlt/customers/expectations/pii_identification.csv") 
+actions = get_expectations(columns, expectations_path, 'action')
+#f"file:{os.path.dirname(os.getcwd())}/expectations/pii_identification.csv"
 
 # COMMAND ----------
 
@@ -41,19 +45,22 @@ def get_dlt_sql(actions, columns):
   failed_columns = pdf["failed_column"].tolist()
   failed_expectations = pdf["expectation"].tolist()
   
+  print(f"Failed Columns: {failed_columns}")
+  print(f"Failed Expectations: {failed_expectations}")
+  
   return [x for x in columns if x not in failed_columns] + list({k: actions[k] for k in failed_expectations}.values()) 
 
 # COMMAND ----------
 
-sql = get_dlt_sql(actions, columns)
-sql
+#schema = spark.read.format("delta").load(f"{table_path}/quarantine").schema
 
 # COMMAND ----------
 
 import dlt
 
 @dlt.table(
-  path=f"{table_path}/clean_processed/"
+  path=f"{table_path}/clean_processed/",
+  table_properties={"may_contain_pii" : "False"}
 )
 def clean_processed():
   

@@ -1,80 +1,38 @@
 # Databricks notebook source
-# MAGIC %md
-# MAGIC ## todo...
-# MAGIC 1. Get metrics table to work again
-# MAGIC 2. Add regex for DOB
-# MAGIC 3. Add regex for Age
+dbutils.widgets.text("STORAGE_DIR", "dbfs:/dlt_pii/customer_pipeline")
+
+STORAGE_DIR = dbutils.widgets.get("STORAGE_DIR")
 
 # COMMAND ----------
 
 input_path = spark.conf.get("input_path")
 table_path = spark.conf.get("table_path")
+expectations_path = spark.conf.get("expectations_path")
 
 # COMMAND ----------
 
-# Write a CSV file of expectation name, constraint and action to take if the expectation fails. When DLT fully supports repos we'll load this from the file that's checked in to source control...
-
-dbutils.fs.put("/FileStore/andrew.weaver@databricks.com/dlt/customers/expectations/pii_identification.csv", """
-name,constraint,action
-{} may contain creditcard,CAST({} AS STRING) NOT REGEXP("^(?:4[0-9]{12}(?:[0-9]{3})?|[25][1-7][0-9]{14}|6(?:011|5[0-9][0-9])[0-9]{12}|3[47][0-9]{13}|3(?:0[0-5]|[68][0-9])[0-9]{11}|(?:2131|1800|35\d{3})\d{11})$") AS result,"concat('XXXXXXXXXXXXXXXX', substr({}, -3, 3)) AS {}"
-{} may contain ssn,CAST({} AS STRING) NOT REGEXP("^\\\\d{3}-\\\\d{2}-\\\\d{4}$") AS result,"'[REDACTED]' AS {}"
-{} may contain expiry date,CAST({} AS STRING) NOT REGEXP("^\\\\d{2}/\\\\d{2}$") AS result,"regexp_replace({}, '^(0[1-9]|1[0-2])', 'XX') AS {}"
-{} may contain security code,CAST({} AS STRING) NOT REGEXP("^\\\\d{3}$") AS result,"'XXX' AS {}"
-{} may contain email address,CAST({} AS STRING) NOT REGEXP("\\\\w@\\\\w.\\\\w") AS result,"regexp_extract({}, '^.*@(.*)$', 1) AS {}"
-{} may contain ipv4,CAST({} AS STRING) NOT REGEXP("^((?:[0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])[.]){3}(?:[0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])$") AS result,"sha2({}, 512) AS {}"
-{} may contain iban,CAST({} AS STRING) NOT REGEXP("[a-zA-Z]{2}[0-9]{2}[a-zA-Z0-9]{4}[0-9]{7}([a-zA-Z0-9]?)+") AS result,"regexp_replace({}, '[a-zA-Z]{2}[0-9]{2}[a-zA-Z0-9]{4}[0-9]{7}([a-zA-Z0-9]?)+', concat(substr({}, 0, 2), 'XXXXXXXXXXXXXXXX', substr({}, -3, 3))) AS {}"
-{} may contain us_address,CAST({} AS STRING) NOT REGEXP("^(\d+) ?([A-Za-z](?= ))? (.*?) ([^ ]+?) ?((?<= ))? ?((?<= )\d*)?$") AS result,"'<US ADDRESS>' AS {}"
-{} may contain phone_number,CAST({} AS STRING) NOT REGEXP("((\\\\(\\\\d{3}\\\\) ?)|(\\\\d{3}-))?\\\\d{3}-\\\\d{4}") AS result,"regexp_replace({}, '[0-9]*', '*') AS {}"
-""", overwrite=True)
-
-# COMMAND ----------
-
-df = spark.read.parquet("dbfs:/dlt_pii/customer_raw")
-
-# COMMAND ----------
-
-df.createOrReplaceTempView("test")
-
-# COMMAND ----------
-
-df
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC SELECT CAST(address AS STRING) NOT REGEXP('^(\d+) ?([A-Za-z](?= ))? (.*?) ([^ ]+?) ?((?<= ))? ?((?<= )\d*)?$') AS result FROM test
-
-# COMMAND ----------
-
-display(df.selectExpr("CAST(address AS STRING) NOT REGEXP('^(\d+) ?([A-Za-z](?= ))? (.*?) ([^ ]+?) ?((?<= ))? ?((?<= )\d*)?$') AS result"))
-
-# COMMAND ----------
-
-import os
+import json
 from pyspark.sql.functions import col
 
-def get_rules_and_actions(columns, expectations_file):
-  """
-    loads data quality rules from csv file
-    :param columns: 
-    :param expectations_file: 
-    :return: dictionary of rules 
-  """
-  rules, actions = {}, {}
-  raw_rules = spark.read.csv(expectations_file, header=True, inferSchema=True).collect()
+def get_expectations(columns, expectations_file, key):
+  
+  results = {}
+  
+  with open(expectations_file, 'r') as f:
+    raw_rules = json.load(f)["expectations"]
   for col in columns:
-    for row in raw_rules:
-      #print(f"ROW: {row}")
-      rules[row["name"].replace("{}", f"`{col}`")] = row["constraint"].replace("{}", f"`{col}`")
-      actions[row["name"].replace("{}", f"`{col}`")] = row["action"].replace("{}", f"`{col}`")
-  return rules, actions
+    for rule in raw_rules:
+      results[rule["name"].replace("{}", f"`{col}`")] = rule[key].replace("{}", f"`{col}`")
+  return results
 
 # COMMAND ----------
 
 columns = spark.read.parquet(input_path).columns
 schema = spark.read.parquet(input_path).schema
-rules, actions = get_rules_and_actions(columns, "file:/dbfs/FileStore/andrew.weaver@databricks.com/dlt/customers/expectations/pii_identification.csv") 
-#f"file:{os.path.dirname(os.getcwd())}/expectations/pii_identification.csv"
+rules = get_expectations(columns, expectations_path, 'constraint')
+
+# When DLT supports repos we'll be able to use this and it'll be much easier... For now the expectations are in https://e2-demo-west.cloud.databricks.com/?o=2556758628403379#files/2035247281457633
+#f"file:{os.path.dirname(os.getcwd())}/expectations/pii_detection.csv"
 
 # COMMAND ----------
 
@@ -82,7 +40,7 @@ import dlt
 import pyspark.sql.functions as F
 
 @dlt.view(
-comment="Raw data that may potentially contain PII"
+  comment="Raw data that may potentially contain PII"
 )
 def staging():
   return (
@@ -96,8 +54,9 @@ def staging():
 # COMMAND ----------
 
 @dlt.table(
-  comment="Data that has been processed and successfully evaluated against our Expectations",
-  path=f"{table_path}/clean/"
+  comment="Clean data that has been scanned and determined not to contain PII",
+  path=f"{table_path}/clean/",
+  table_properties={"may_contain_pii" : "False"}
 )
 @dlt.expect_all_or_drop(rules) 
 def clean():
@@ -118,7 +77,8 @@ import pyspark.sql.functions as F
 
 @dlt.table(
  comment="Data that has been quarantined for potentially containing PII",
- path=f"{table_path}/quarantine/"
+ path=f"{table_path}/quarantine/",
+ table_properties={"may_contain_pii" : "True"}
 )
 def quarantine():
   return (
@@ -158,15 +118,16 @@ def events_to_dataframe(df):
 
 # COMMAND ----------
 
-# @dlt.table(
-#  path=f"{table_path}/metrics/"
-# )
-# def metrics():
-#     return (
-#     spark
-#       .read
-#       .format("delta")
-#       .load("dbfs:/dlt_pii/customer_pipeline/system/events")
-#       .filter(F.col("event_type") == "flow_progress")
-#       .groupBy("timestamp").applyInPandas(events_to_dataframe, schema=event_schema)
-#       .select("timestamp", "step", "expectation", "passed", "failed"))
+@dlt.table(
+ path=f"{table_path}/metrics/",
+ table_properties={"may_contain_pii" : "False"}
+)
+def metrics():
+    return (
+    spark
+      .read
+      .format("delta")
+      .load(f"{STORAGE_DIR}/system/events")
+      .filter(F.col("event_type") == "flow_progress")
+      .groupBy("timestamp").applyInPandas(events_to_dataframe, schema=event_schema)
+      .select("timestamp", "step", "expectation", "passed", "failed"))
