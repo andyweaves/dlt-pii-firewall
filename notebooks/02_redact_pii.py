@@ -69,4 +69,4 @@ def redacted():
 )
 def clean_processed():
   
-  return dlt.read_stream("redacted").union(spark.readStream.format("delta").load(f"{table_path}/clean/"))
+  return dlt.read_stream("redacted").unionByName(spark.readStream.format("delta").load(f"{table_path}/clean/"))

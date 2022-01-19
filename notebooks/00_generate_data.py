@@ -77,12 +77,18 @@ display(pii_data)
 
 # COMMAND ----------
 
-clean_data = 
-
-# COMMAND ----------
-
+import pandas as pd
+ 
 # Generate some "clean" data which doesn't contain PII and union them to our data which contains generated PII...
-clean_data = 
+data = [
+  [10001, "John", "", date.today(), 1965, "Strawberry Fields", "999.999.999.999", "1234", "Taxman", "", 1234, "Yesterday", "1", "There are places I'll remember all my life though some have changed"], 
+  [20001, "Paul", "", date.today(), 1966, "Penny Lane", "1.1.1.01", "5678", "Money (That's What I Want)", "", 5678, "Eight Days a Week", "2", "And in the end the love you take is equal to the love you make"], 
+  [30001, "Ringo", "", date.today(), 1967, "Abbey Road", "255.255.255.256", "Parlophone", "You Never Give Me Your Money", "", 1111, "Tomorrow Never Knows", "3", "How does it feel to be one of the beautiful people?"], 
+  [40001, "George", "", date.today(), 1969, "Octopus's Garden", "0.1", "No Reply", "Back in the U.S.S.R.", "", 2222, "Timeless", "4", "Something in the way she moves..."]]
+ 
+pdf = pd.DataFrame(data, columns = ["customer_id", "name", "email", "date_of_birth", "age", "address", "ip_address", "phone_number", "ssn", "iban", "credit_card", "expiry_date", "security_code", "freetext"])
+
+clean_data = spark.createDataFrame(pdf) 
 
 customer_data = pii_data.union(clean_data)
 
