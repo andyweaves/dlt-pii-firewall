@@ -27,7 +27,7 @@ When everything is set up correctly you should see something like this...
 
 ## 3. DLT pipeline to automatically redact detected PII:
 
-
+![image](https://user-images.githubusercontent.com/43955924/150203781-1ce29e4c-d6ba-4a64-bb53-11cd80f1a834.png)
 
 ## 4. Example of the column-level PII tagging applied:
 
