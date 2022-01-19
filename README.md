@@ -7,4 +7,5 @@ The project is currently designed to be run as a [multi task job](https://docs.d
 
 In the [notebooks folder](notebooks/) you will find the following:
 
+[00_generate_data.py](notebooks/00_generate_data.py) - a notebook that can be used to generate fake PII data
 
