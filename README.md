@@ -25,11 +25,14 @@ When everything is set up correctly you should see something like this...
 
 ![image](https://user-images.githubusercontent.com/43955924/150202534-486b3fec-2b2a-41cd-8ebf-a43b3d15df0d.png)
 
-## 3. 
+## 3. DLT pipeline to automatically redact detected PII:
 
 
+## 4. Example of the column PII-tagging applied:
 
-## 6. Query of the redacted output table:
+![image](https://user-images.githubusercontent.com/43955924/150203258-7e2677f7-afd3-4a29-be7d-35f29df6f9f6.png)
+
+## 5. Query of the redacted output table:
 
 ![image](https://user-images.githubusercontent.com/43955924/150202607-2b4155df-cf17-49cf-9fa0-7a818c86e6a4.png)
 
