@@ -1,11 +1,4 @@
 # Databricks notebook source
-# MAGIC %md
-# MAGIC ## todo
-# MAGIC 
-# MAGIC 1. Get union to work
-
-# COMMAND ----------
-
 input_path = spark.conf.get("input_path")
 table_path = spark.conf.get("table_path")
 expectations_path = spark.conf.get("expectations_path")
@@ -52,20 +45,28 @@ def get_dlt_sql(actions, columns):
 
 # COMMAND ----------
 
-#schema = spark.read.format("delta").load(f"{table_path}/quarantine").schema
-
-# COMMAND ----------
-
 import dlt
 
 @dlt.table(
-  path=f"{table_path}/clean_processed/",
+  comment="Data in which PII has been redacted based on a set of predefined rules",
+  path=f"{table_path}/redacted/",
   table_properties={"may_contain_pii" : "False"}
 )
-def clean_processed():
+def redacted():
   
   sql = get_dlt_sql(actions, columns)
   
   print(f"Dynamic SQL: {sql}")
   
-  return spark.read.format("delta").load(f"{table_path}/quarantine/").selectExpr(sql)#.union(spark.read.format("delta").load(f"{table_path}/clean/"))
+  return spark.readStream.format("delta").load(f"{table_path}/quarantine/").selectExpr(sql)#.union(spark.read.format("delta").load(f"{table_path}/clean/"))
+
+# COMMAND ----------
+
+@dlt.table(
+  comment="Data which has either been scanned and determined not to contain PII or where PII has been identified and redacted based on a set of predefined rules",
+  path=f"{table_path}/clean_processed_2/",
+  table_properties={"may_contain_pii" : "False"}
+)
+def clean_processed():
+  
+  return dlt.read_stream("redacted").union(spark.readStream.format("delta").load(f"{table_path}/clean/"))

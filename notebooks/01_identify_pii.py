@@ -40,15 +40,14 @@ import dlt
 import pyspark.sql.functions as F
 
 @dlt.view(
-  comment="Raw data that may potentially contain PII"
+  comment="Raw data that may contain PII"
 )
 def staging():
   return (
-    spark
-      .read
-      .format("parquet")
-      .schema(schema)
-      .load(input_path)
+    spark.readStream.format("cloudFiles") 
+    .option("cloudFiles.format", "parquet") 
+    .schema(schema) 
+    .load(input_path)
   )
 
 # COMMAND ----------
@@ -60,7 +59,7 @@ def staging():
 )
 @dlt.expect_all_or_drop(rules) 
 def clean():
-  return dlt.read("staging")
+  return dlt.read_stream("staging")
 
 # COMMAND ----------
 
@@ -76,14 +75,14 @@ def failed_expectations(expectations):
 import pyspark.sql.functions as F
 
 @dlt.table(
- comment="Data that has been quarantined for potentially containing PII",
+ comment="Data that has been scanned and quarantined for potentially containing PII",
  path=f"{table_path}/quarantine/",
  table_properties={"may_contain_pii" : "True"}
 )
 def quarantine():
   return (
       dlt
-        .read("staging")
+        .read_stream("staging")
         .withColumn("failed_expectations", F.array([F.expr(value) for key, value in rules.items()]))
         .withColumn("failed_expectations", failed_expectations("failed_expectations"))
         .filter(F.size("failed_expectations") > 0)
@@ -125,7 +124,7 @@ def events_to_dataframe(df):
 def metrics():
     return (
     spark
-      .read
+      .readStream
       .format("delta")
       .load(f"{STORAGE_DIR}/system/events")
       .filter(F.col("event_type") == "flow_progress")

@@ -71,10 +71,21 @@ def generate_fake_data(pdf: pd.DataFrame) -> pd.DataFrame:
     
   return pdf.apply(generate_data, axis=1).drop(["partition_id", "id"], axis=1)
 
-df = spark.range(1, NUM_ROWS + 1).withColumn("customer_id", get_customer_id(col("id"))).withColumn("partition_id", spark_partition_id()).groupBy("partition_id").applyInPandas(generate_fake_data, schema).orderBy(asc("customer_id"))
+pii_data = spark.range(1, NUM_ROWS + 1).withColumn("customer_id", get_customer_id(col("id"))).withColumn("partition_id", spark_partition_id()).groupBy("partition_id").applyInPandas(generate_fake_data, schema).orderBy(asc("customer_id"))
 
-display(df)
+display(pii_data)
 
 # COMMAND ----------
 
-df.write.format("parquet").mode("append").save(OUTPUT_DIR) 
+clean_data = 
+
+# COMMAND ----------
+
+# Generate some "clean" data which doesn't contain PII and union them to our data which contains generated PII...
+clean_data = 
+
+customer_data = pii_data.union(clean_data)
+
+# COMMAND ----------
+
+customer_data.write.format("parquet").mode("append").save(OUTPUT_DIR) 
