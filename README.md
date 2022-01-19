@@ -15,3 +15,21 @@ In the [notebooks folder](notebooks/) you will find the following:
 * [05_queries.sql](notebooks/05_queries.sql) - a notebook that can be used to query the output tables
 * [06_cleanup.py](notebooks/06_cleanup.py) - a notebook that can be used to clean up the input, storage and output data so that it can be re-tested
 
+When everything is set up correctly you should see something like this...
+
+## 1. Multi step job to automatically detect, redact and tag PII:
+
+![image](https://user-images.githubusercontent.com/43955924/150202317-ad89c6aa-4bf8-432c-9fb1-0ca4cac0a157.png)
+
+## 2. DLT pipeline to automatically detect PII:
+
+![image](https://user-images.githubusercontent.com/43955924/150202534-486b3fec-2b2a-41cd-8ebf-a43b3d15df0d.png)
+
+## 3. 
+
+
+
+## 6. Query of the redacted output table:
+
+![image](https://user-images.githubusercontent.com/43955924/150202607-2b4155df-cf17-49cf-9fa0-7a818c86e6a4.png)
+
