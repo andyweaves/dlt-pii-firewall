@@ -1,0 +1,28 @@
+{
+    "name": "",
+    "storage": "dbfs:/dlt_pii/customer_pipeline",
+    "configuration": {
+        "table_path": "dbfs:/dlt_pii/customer_delta",
+        "input_path": "dbfs:/dlt_pii/customer_raw",
+        "expectations_path": ""
+    },
+    "clusters": [
+        {
+            "label": "default",
+            "autoscale": {
+                "min_workers": 1,
+                "max_workers": 5
+            }
+        }
+    ],
+    "libraries": [
+        {
+            "notebook": {
+                "path": ""
+            }
+        }
+    ],
+    "target": "dlt_pii",
+    "continuous": false,
+    "development": true
+}
