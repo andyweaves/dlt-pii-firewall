@@ -3,7 +3,7 @@ A demo of using [Delta Live Tables](https://databricks.com/discover/pages/gettin
 
 > :warning: **This is a demo and is provided as-is**: we make no claims as to the accuracy of the PII detection provided here, and if you use it it is **YOUR** responsibility to ensure that the example regexes and detection/redaction/tagging pipelines meet your requirements.
 
-> :information: Delta Live Tables (DLT) makes it easy to build and manage reliable data pipelines that deliver high-quality data on Delta Lake. DLT helps data engineering teams simplify ETL development and management with declarative pipeline development, automatic data testing, and deep visibility for monitoring and recovery.***
+> :tip: Delta Live Tables (DLT) makes it easy to build and manage reliable data pipelines that deliver high-quality data on Delta Lake. DLT helps data engineering teams simplify ETL development and management with declarative pipeline development, automatic data testing, and deep visibility for monitoring and recovery.***
 
 The project is currently designed to be run as a [multi task job](https://docs.databricks.com/data-engineering/jobs/jobs-quickstart.html) on the world's favourite analytics platform... [Databricks](https://databricks.com/)!
 
