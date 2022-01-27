@@ -37,9 +37,9 @@ rules = get_expectations(columns, expectations_path, 'constraint')
 # COMMAND ----------
 
 import dlt
-import pyspark.sql.functions as F
 
 @dlt.view(
+  name="staging",
   comment="Raw data that may contain PII"
 )
 def staging():
@@ -52,6 +52,15 @@ def staging():
 
 # COMMAND ----------
 
+from pyspark.sql.functions import udf
+
+@udf("array<string>")
+def failed_expectations(expectations):
+  # retrieve the name of each failed expectation 
+  return [name for name, success in zip(rules, expectations) if not success]
+
+# COMMAND ----------
+
 @dlt.table(
   comment="Clean data that has been scanned and determined not to contain PII",
   path=f"{table_path}/clean/",
@@ -60,15 +69,6 @@ def staging():
 @dlt.expect_all_or_drop(rules) 
 def clean():
   return dlt.read_stream("staging")
-
-# COMMAND ----------
-
-from pyspark.sql.functions import udf
-
-@udf("array<string>")
-def failed_expectations(expectations):
-  # retrieve the name of each failed expectation 
-  return [name for name, success in zip(rules, expectations) if not success]
 
 # COMMAND ----------
 
