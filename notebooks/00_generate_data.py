@@ -5,15 +5,11 @@
 
 dbutils.widgets.dropdown("NUM_ROWS", defaultValue="1000", choices=["50", "100", "1000", "10000", "250000"])
 dbutils.widgets.text("OUTPUT_DIR", defaultValue="dbfs:/dlt_pii/customer_raw")
-
-NUM_ROWS = int(dbutils.widgets.get("NUM_ROWS"))
-OUTPUT_DIR = dbutils.widgets.get("OUTPUT_DIR")
-
-# COMMAND ----------
-
 dbutils.widgets.dropdown("GENERATE_CLEAN_DATA", defaultValue="False", choices=["True", "False"])
 
 GENERATE_CLEAN_DATA = dbutils.widgets.get("GENERATE_CLEAN_DATA") == "True"
+NUM_ROWS = int(dbutils.widgets.get("NUM_ROWS"))
+OUTPUT_DIR = dbutils.widgets.get("OUTPUT_DIR")
 
 # COMMAND ----------
 
@@ -61,7 +57,7 @@ def generate_fake_data(pdf: pd.DataFrame) -> pd.DataFrame:
 
     y["name"] = fake.name()
     y["email"] = fake.email()
-    y["date_of_birth"] = dob
+    y["date_of_birth"] = dob #.strftime("%Y-%m-%d")
     y["age"] = date.today().year - dob.year
     y["address"] = fake.address()
     y["ip_address"] = fake.ipv4()

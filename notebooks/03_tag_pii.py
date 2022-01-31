@@ -7,10 +7,6 @@ TABLE_NAMES = dbutils.widgets.get("TABLE_NAMES").split(",")
 
 # COMMAND ----------
 
-TABLE_NAMES
-
-# COMMAND ----------
-
 from pyspark.sql.functions import explode, regexp_extract, col
 
 # Drop duplicates because otherwise we'll need to handle duplicate columns in the downstream tables, which will get messy

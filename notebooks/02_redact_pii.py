@@ -62,6 +62,10 @@ def redacted():
 
 # COMMAND ----------
 
+dbutils.fs.ls("dbfs:/dlt_pii/customer_delta")
+
+# COMMAND ----------
+
 @dlt.table(
   comment="Data which has either been scanned and determined not to contain PII or where PII has been identified and redacted based on a set of predefined rules",
   path=f"{table_path}/clean_processed_2/",

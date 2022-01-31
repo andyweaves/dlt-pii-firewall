@@ -30,7 +30,6 @@ def get_expectations(columns, expectations_file, key):
 columns = spark.read.parquet(input_path).columns
 schema = spark.read.parquet(input_path).schema
 rules = get_expectations(columns, expectations_path, 'constraint')
-
 # When DLT supports repos we'll be able to use this and it'll be much easier... For now the expectations are in https://e2-demo-west.cloud.databricks.com/?o=2556758628403379#files/2035247281457633
 #f"file:{os.path.dirname(os.getcwd())}/expectations/pii_detection.csv"
 
@@ -76,8 +75,7 @@ import pyspark.sql.functions as F
 
 @dlt.table(
  comment="Data that has been scanned and quarantined for potentially containing PII",
- path=f"{table_path}/quarantine/",
- table_properties={"may_contain_pii" : "True"}
+  path=f"{table_path}/quarantine/"
 )
 def quarantine():
   return (
@@ -90,43 +88,43 @@ def quarantine():
 
 # COMMAND ----------
 
-import pandas as pd
-import json
-from pyspark.sql.types import *
+# import pandas as pd
+# import json
+# from pyspark.sql.types import *
 
-event_schema = StructType([
-  StructField('timestamp', TimestampType(), True),
-  StructField('step', StringType(), True),
-  StructField('expectation', StringType(), True),
-  StructField('passed', IntegerType(), True),
-  StructField('failed', IntegerType(), True),
-])
+# event_schema = StructType([
+#   StructField('timestamp', TimestampType(), True),
+#   StructField('step', StringType(), True),
+#   StructField('expectation', StringType(), True),
+#   StructField('passed', IntegerType(), True),
+#   StructField('failed', IntegerType(), True),
+# ])
  
-def events_to_dataframe(df):
-  d = []
-  group_key = df['timestamp'].iloc[0]
-  for i, r in df.iterrows():
-    json_obj = json.loads(r['details'])
-    try:
-      expectations = json_obj['flow_progress']['data_quality']['expectations']
-      for expectation in expectations:
-        d.append([group_key, expectation['dataset'], expectation['name'], expectation['passed_records'], expectation['failed_records']])
-    except:
-      pass
-  return pd.DataFrame(d, columns=['timestamp', 'step', 'expectation', 'passed', 'failed'])
+# def events_to_dataframe(df):
+#   d = []
+#   group_key = df['timestamp'].iloc[0]
+#   for i, r in df.iterrows():
+#     json_obj = json.loads(r['details'])
+#     try:
+#       expectations = json_obj['flow_progress']['data_quality']['expectations']
+#       for expectation in expectations:
+#         d.append([group_key, expectation['dataset'], expectation['name'], expectation['passed_records'], expectation['failed_records']])
+#     except:
+#       pass
+#   return pd.DataFrame(d, columns=['timestamp', 'step', 'expectation', 'passed', 'failed'])
 
 # COMMAND ----------
 
-@dlt.table(
- path=f"{table_path}/metrics/",
- table_properties={"may_contain_pii" : "False"}
-)
-def metrics():
-    return (
-    spark
-      .readStream
-      .format("delta")
-      .load(f"{STORAGE_DIR}/system/events")
-      .filter(F.col("event_type") == "flow_progress")
-      .groupBy("timestamp").applyInPandas(events_to_dataframe, schema=event_schema)
-      .select("timestamp", "step", "expectation", "passed", "failed"))
+# @dlt.table(
+#  path=f"{table_path}/metrics/",
+#  table_properties={"may_contain_pii" : "False"}
+# )
+# def metrics():
+#     return (
+#     spark
+#       .readStream
+#       .format("delta")
+#       .load(f"{STORAGE_DIR}/system/events")
+#       .filter(F.col("event_type") == "flow_progress")
+#       .groupBy("timestamp").applyInPandas(events_to_dataframe, schema=event_schema)
+#       .select("timestamp", "step", "expectation", "passed", "failed"))
