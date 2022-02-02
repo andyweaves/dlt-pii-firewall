@@ -43,8 +43,7 @@ import dlt
 )
 def staging():
   return (
-    spark.readStream.format("cloudFiles") 
-    .option("cloudFiles.format", "parquet") 
+    spark.read.format("parquet")
     .schema(schema) 
     .load(input_path)
   )
@@ -67,7 +66,7 @@ def failed_expectations(expectations):
 )
 @dlt.expect_all_or_drop(rules) 
 def clean():
-  return dlt.read_stream("staging")
+  return dlt.read("staging")
 
 # COMMAND ----------
 
@@ -80,7 +79,7 @@ import pyspark.sql.functions as F
 def quarantine():
   return (
       dlt
-        .read_stream("staging")
+        .read("staging")
         .withColumn("failed_expectations", F.array([F.expr(value) for key, value in rules.items()]))
         .withColumn("failed_expectations", failed_expectations("failed_expectations"))
         .filter(F.size("failed_expectations") > 0)

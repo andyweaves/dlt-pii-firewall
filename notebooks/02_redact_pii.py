@@ -58,11 +58,7 @@ def redacted():
   
   print(f"Dynamic SQL: {sql}")
   
-  return spark.readStream.format("delta").load(f"{table_path}/quarantine/").selectExpr(sql)#.union(spark.read.format("delta").load(f"{table_path}/clean/"))
-
-# COMMAND ----------
-
-dbutils.fs.ls("dbfs:/dlt_pii/customer_delta")
+  return spark.read.format("delta").load(f"{table_path}/quarantine/").selectExpr(sql)#.union(spark.read.format("delta").load(f"{table_path}/clean/"))
 
 # COMMAND ----------
 
@@ -73,4 +69,4 @@ dbutils.fs.ls("dbfs:/dlt_pii/customer_delta")
 )
 def clean_processed():
   
-  return dlt.read_stream("redacted").unionByName(spark.readStream.format("delta").load(f"{table_path}/clean/"))
+  return dlt.read("redacted").unionByName(spark.read.format("delta").load(f"{table_path}/clean/"))
