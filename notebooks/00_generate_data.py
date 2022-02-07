@@ -3,7 +3,7 @@
 
 # COMMAND ----------
 
-dbutils.widgets.dropdown("NUM_ROWS", defaultValue="1000", choices=["50", "100", "1000", "10000", "250000"])
+dbutils.widgets.dropdown("NUM_ROWS", defaultValue="1000", choices=["50", "100", "1000", "3000", "5000", "10000", "250000"])
 dbutils.widgets.text("OUTPUT_DIR", defaultValue="dbfs:/dlt_pii/customer_raw")
 dbutils.widgets.dropdown("GENERATE_CLEAN_DATA", defaultValue="False", choices=["True", "False"])
 dbutils.widgets.dropdown("GENERATE_PII_DATA", defaultValue="True", choices=["True", "False"])
