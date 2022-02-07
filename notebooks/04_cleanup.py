@@ -33,8 +33,3 @@ if CREATE_NEW_DATABASE:
 for DIR in DIRS:
   print(f"Deleting {DIR}...")
   dbutils.fs.rm(DIR, recurse=True)
-
-# COMMAND ----------
-
-#current_user = sql("SELECT current_user() AS current_user").head()[0]
-#current_user

@@ -1,10 +1,11 @@
 {
-    "name": "",
-    "storage": "dbfs:/dlt_pii/customer_pipeline",
+    "name": "DLT Detect and Redact PII",
+    "storage": "",
     "configuration": {
-        "table_path": "dbfs:/dlt_pii/customer_delta",
-        "input_path": "dbfs:/dlt_pii/customer_raw",
-        "expectations_path": ""
+        "table_path": "",
+        "input_path": "",
+        "storage_path": "",
+        "expectations_path": "/Workspace/Repos/<username>/dlt-pii-detection/expectations/pii_detection.json"
     },
     "clusters": [
         {
@@ -18,7 +19,12 @@
     "libraries": [
         {
             "notebook": {
-                "path": ""
+                "path": "/Repos/<username>/dlt-pii-detection/notebooks/01_observability"
+            }
+        },
+        {
+            "notebook": {
+                "path": "/Repos/<username>/dlt-pii-detection/notebooks/02_detect_and_redact_pii"
             }
         }
     ],
