@@ -9,9 +9,8 @@ from pyspark.sql.functions import desc, col
 
 @dlt.table(
  name="event_logs",
- comment="The raw DLT event logs relating to our pipeline",
- path=f"{table_path}/event_logs/",
- table_properties={"may_contain_pii" : "True"}
+ comment="The raw event logs relating to our DLT pipeline",
+ path=f"{table_path}/event_logs/"
 )
 def event_logs():
     return (
@@ -25,9 +24,8 @@ def event_logs():
 
 @dlt.table(
  name="audit_logs",
- comment="",
- path=f"{table_path}/audit_logs/",
- table_properties={"may_contain_pii" : "True"}
+ comment="Audit logs relating to our DLT pipeline",
+ path=f"{table_path}/audit_logs/"
 )
 def audit_logs():
     return (
@@ -40,9 +38,8 @@ def audit_logs():
 
 @dlt.table(
  name="data_quality_logs",
- comment="",
- path=f"{table_path}/data_quality_logs/",
- table_properties={"may_contain_pii" : "False"}
+ comment="Data Quality logs relating to our DLT pipeline",
+ path=f"{table_path}/data_quality_logs/"
 )
 def data_quality_logs():
     return (
@@ -56,9 +53,8 @@ def data_quality_logs():
 
 @dlt.table(
  name="flow_logs",
- comment="",
- path=f"{table_path}/flow_logs/",
- table_properties={"may_contain_pii" : "False"}
+ comment="Flow logs relating to our DLT pipeline",,
+ path=f"{table_path}/flow_logs/"
 )
 def flow_logs():
     return (
