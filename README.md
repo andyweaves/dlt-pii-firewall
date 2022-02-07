@@ -19,18 +19,16 @@ When everything is set up correctly you should see something like this...
 
 ## 1. Multi step job to automatically detect, redact and tag PII:
 
-
+![image](https://user-images.githubusercontent.com/43955924/152864772-662c8697-a858-4d4f-94b2-d12363f36f4d.png)
 
 ## 2. DLT pipeline to automatically detect and redact PII:
 
+![image](https://user-images.githubusercontent.com/43955924/152864961-732fb2ca-58dc-4805-96fa-110b3a186adc.png)
 
+## 3. Example of the column-level PII tagging applied:
 
+![image](https://user-images.githubusercontent.com/43955924/152865773-de1f6f53-2c66-4f8c-b6fc-0d8d0358ef97.png)
 
-## 4. Example of the column-level PII tagging applied:
+## 4. Query of the redacted output table:
 
-
-
-## 5. Query of the redacted output table:
-
-
-
+![image](https://user-images.githubusercontent.com/43955924/152866375-0c91bcd1-6204-40a9-ab5d-f92cd2913f25.png)
