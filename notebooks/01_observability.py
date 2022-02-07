@@ -2,14 +2,10 @@
 table_path = spark.conf.get("table_path")
 storage_path = spark.conf.get("storage_path")
 
-from datetime import datetime
-
-print(f"{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f')} Starting Observability Pipeline...")
-
 # COMMAND ----------
 
 import dlt
-from pyspark.sql.functions import *
+from pyspark.sql.functions import desc, col
 
 @dlt.table(
  name="event_logs",
