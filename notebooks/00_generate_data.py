@@ -106,3 +106,7 @@ if GENERATE_CLEAN_DATA:
 # COMMAND ----------
 
 data.write.format("parquet").mode("append").save(OUTPUT_DIR) 
+
+# COMMAND ----------
+
+display(spark.read.parquet("dbfs:/dlt_pii/customer_raw"))

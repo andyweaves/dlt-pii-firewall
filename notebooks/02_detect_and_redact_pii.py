@@ -5,28 +5,28 @@ expectations_path = spark.conf.get("expectations_path")
 
 # COMMAND ----------
 
+import pandas as pd
 import json
-from pyspark.sql.functions import col
 
-def get_expectations(columns, expectations_file, key):
-  
-  results = {}
-  
-  with open(expectations_file, 'r') as f:
+def get_expectations_and_actions(columns, expectations_path):
+
+  expectations_and_actions = pd.DataFrame(columns=["expectation", "constraint", "mode", "action"])
+
+  with open(expectations_path, 'r') as f:
     raw_rules = json.load(f)["expectations"]
-  for col in columns:
+
+  for column in columns:
     for rule in raw_rules:
-      results[rule["name"].replace("{}", f"`{col}`")] = rule[key].replace("{}", f"`{col}`")
-  return results
+      expectations_and_actions = expectations_and_actions.append({"expectation": rule["name"].replace("{}", f"`{column}`"), "constraint": rule["constraint"].replace("{}", f"`{column}`"), "mode": rule["mode"], "action": rule["action"].replace("{}", f"`{column}`")}, ignore_index=True)
+      
+  return expectations_and_actions
 
 # COMMAND ----------
 
 columns = spark.read.parquet(input_path).columns
-schema = spark.read.parquet(input_path).schema
-constraints = get_expectations(columns, expectations_path, 'constraint')
-actions = get_expectations(columns, expectations_path, 'action')
+expectations_and_actions = get_expectations_and_actions(columns, expectations_path)
 
-# When DLT fully supports Repos we'll be able to use this and it'll be much easier... 
+# When DLT fully supports Repos we'll be able to use this... 
 #f"file:{os.path.dirname(os.getcwd())}/expectations/pii_detection.csv"
 
 # COMMAND ----------
@@ -40,27 +40,38 @@ def get_failed_expectations(expectations):
 
 # COMMAND ----------
 
-from pyspark.sql.functions import explode, regexp_extract
+from pyspark.sql.functions import explode, regexp_extract, col
 import pyspark.sql.functions as F
 
-def get_select_expr(actions, columns):
+constraints = dict(zip(expectations_and_actions.expectation, expectations_and_actions.constraint))
+
+def get_select_expr(columns):
 
   # Drop duplicates because otherwise we'll need to handle duplicate columns in the downstream tables, which will get messy...
-  pdf = spark.read.parquet(input_path).withColumn("failed_expectations", F.array([F.expr(value) for key, value in constraints.items()])).withColumn("failed_expectations", get_failed_expectations("failed_expectations")).filter(F.size("failed_expectations") > 0).select(explode("failed_expectations").alias("expectation")).distinct().withColumn("failed_column", regexp_extract(col("expectation"), "\`(.*?)\`", 1)).toPandas().drop_duplicates(subset = ["failed_column"])
-  
-  failed_columns = pdf["failed_column"].tolist()
-  failed_expectations = pdf["expectation"].tolist()
+  pdf = spark.read.parquet(input_path).withColumn("failed_expectations", F.array([F.expr(value) for key, value in constraints.items()])).withColumn("failed_expectations", get_failed_expectations("failed_expectations")).filter(F.size("failed_expectations") > 0).select(explode("failed_expectations").alias("expectation")).distinct().withColumn("failed_column", regexp_extract(col("expectation"), "\`(.*?)\`", 1)).toPandas().drop_duplicates(subset = ["failed_column"]).merge(expectations_and_actions, on="expectation")
   
   pii_detected = False
   
-  if len(failed_expectations) > 0:
+  if len(pdf) > 0:
     pii_detected = True
     
-  return [x for x in columns if x not in failed_columns] + list({k: actions[k] for k in failed_expectations}.values()), pii_detected
+  # Todo - can this all be done with list comprehension? That would be more performant...  
+    
+  sql = [x for x in columns if x not in pdf["failed_column"].tolist()]
+  
+  def generate_sql(row):
+    if row["mode"] in ["REDACT", "REDACT_AND_TAG"]:
+      sql.append(row["action"])
+    elif row["mode"] == "TAG":
+      sql.append(row["failed_column"])  
+
+  pdf.apply(generate_sql, axis=1)
+    
+  return sql, pii_detected
 
 # COMMAND ----------
 
-select_expr, pii_detected = get_select_expr(actions, columns)
+select_expr, pii_detected = get_select_expr(columns)
 
 # COMMAND ----------
 

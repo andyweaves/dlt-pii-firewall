@@ -53,7 +53,7 @@ def data_quality_logs():
 
 @dlt.table(
  name="flow_logs",
- comment="Flow logs relating to our DLT pipeline",,
+ comment="Flow logs relating to our DLT pipeline",
  path=f"{table_path}/flow_logs/"
 )
 def flow_logs():
