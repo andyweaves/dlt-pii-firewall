@@ -44,7 +44,6 @@ import re
 if len(failed_expectations) > 0:
   spark.sql(f"ALTER DATABASE {DATABASE_NAME} SET DBPROPERTIES ('pii_scanned' = 'True')")
   spark.sql(f"ALTER DATABASE {DATABASE_NAME} SET DBPROPERTIES ('pii_found' = 'True')")
-  spark.sql(f"ALTER DATABASE {DATABASE_NAME} SET DBPROPERTIES ('pii_action' = 'REDACTED')")
   for table in TABLE_NAMES:
     for index, failed_expectation in failed_expectations.iterrows():
       if failed_expectation["mode"] in ["TAG", "REDACT_AND_TAG"]:
