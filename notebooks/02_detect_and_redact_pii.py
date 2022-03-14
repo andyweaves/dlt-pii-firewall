@@ -120,7 +120,7 @@ def quarantine():
   name="redacted",
   comment="Data in which PII has been found and redacted based on a set of predefined rules",
   path=f"{table_path}/redacted/",
-  table_properties={"pii_scanned" : "True", "pii_found": str(pii_detected), "pii_action": "REDACTED"}
+  table_properties={"pii_scanned" : "True", "pii_found": str(pii_detected)}
 )
 def redacted(select_expr = select_expr):
   
@@ -132,7 +132,7 @@ def redacted(select_expr = select_expr):
   name="clean_processed",
   comment="Data that has been scanned without any PII being found or where PII has been found and redacted based on a set of predefined rules",
   path=f"{table_path}/clean_processed/",
-  table_properties={"pii_scanned" : "True", "pii_found": str(pii_detected), "pii_action": "REDACTED"}
+  table_properties={"pii_scanned" : "True", "pii_found": str(pii_detected)}
 )
 def clean_processed():
   
