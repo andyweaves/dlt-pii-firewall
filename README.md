@@ -10,13 +10,18 @@
 
 To get this pipeline running on your environment, please use the following steps:
 
-1. Clone this Github Repo using our Repos for Git Integration (see the docs for [AWS](https://docs.databricks.com/repos/index.html), [Azure](https://docs.microsoft.com/en-us/azure/databricks/repos/), [GCP](https://docs.gcp.databricks.com/repos/index.html)). 
-2. Create a new DLT pipeline, selecting [01_observability.py](notebooks/01_observability.py) and [02_detect_and_redact_pii.py](notebooks/02_detect_and_redact_pii.py) as Notebook Libraries (see the docs for [AWS](https://docs.databricks.com/data-engineering/delta-live-tables/delta-live-tables-ui.html), [Azure](https://docs.microsoft.com/en-us/azure/databricks/data-engineering/delta-live-tables/delta-live-tables-ui), [GCP](https://docs.gcp.databricks.com/data-engineering/delta-live-tables/delta-live-tables-ui.html)). You’ll need add the following Configuration:
+1. First you need some input data to run the pipeline on. If you don't have any data, or just want to try it out, you can use the [00_generate_data](notebooks/00_generate_data.py) notebook to generate some, using the following options to customise that data generation:
+   * ```GENERATE_CLEAN_DATA```: Whether to generate 4 records of artificially created "clean data" specifically designed not to get evaluated as PII
+   * ```GENERATE_PII_DATA```: Whether to generate fake PII data
+   * ```NUM_ROWS```: The number of rows of fake PII data to generate
+   * ```OUTPUT_DIR```: The path on DBFS or cloud storage to write the generated data out to
+3. Clone this Github Repo using our Repos for Git Integration (see the docs for [AWS](https://docs.databricks.com/repos/index.html), [Azure](https://docs.microsoft.com/en-us/azure/databricks/repos/), [GCP](https://docs.gcp.databricks.com/repos/index.html)). 
+4. Create a new DLT pipeline, selecting [01_observability.py](notebooks/01_observability.py) and [02_detect_and_redact_pii.py](notebooks/02_detect_and_redact_pii.py) as Notebook Libraries (see the docs for [AWS](https://docs.databricks.com/data-engineering/delta-live-tables/delta-live-tables-ui.html), [Azure](https://docs.microsoft.com/en-us/azure/databricks/data-engineering/delta-live-tables/delta-live-tables-ui), [GCP](https://docs.gcp.databricks.com/data-engineering/delta-live-tables/delta-live-tables-ui.html)). You’ll need add the following Configuration:
    * ```INPUT_PATH```: 
    * ```TABLE_PATH```: 
    * ```STORAGE_PATH```: 
    * ```EXPECTATIONS_PATH```:
-3. Note: once you’ve edited the settings that are configurable via the UI, you’ll need to edit the JSON so that you can add the configuration needed to authenticate with your chosen cloud storage:
+5. Note: once you’ve edited the settings that are configurable via the UI, you’ll need to edit the JSON so that you can add the configuration needed to authenticate with your chosen cloud storage:
    * For AWS add the ```instance_profile_arn``` to the aws_attributes object.
    * For Azure add the Service Principal secrets to the ```spark_conf``` object.
    * For GCP add the ```google_service_account``` to the  ```gcp_attributes``` object.
