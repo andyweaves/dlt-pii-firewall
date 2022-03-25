@@ -48,6 +48,27 @@ To get this pipeline running on your environment, please use the following steps
    * ```TABLE_NAMES```: The tables within the databse to apply tagging (via properties) to and column level comments to. The DLT pipeline creates 3 main tables: ```clean```, ```redacted``` and ```clean_processed``` you can apply tagging to 1, 2 or all 3 of these.
    * ```EXPECTATIONS_PATH```: The path to the [pii_firewall_rules.json](expectations/pii_firewall_rules.json) config file once you've checked out the Repo. This is the main configuration file used to customise the behaviour of the detection/redaction/tagging of data. See **Firewall Rules** below for more details.
 
+## Output Tables
+
+The following data tables and views are created by this pipeline:
+
+| Name            | Type  | Description         |
+| ------------    | ----  | -----------         |
+| staging         | View  | Initial view that data is load into. May contain PII hence declared as a view (so PII is not persisted after the pipeline has been run |
+| quarantine      | View  | View containing data that has failed expectations. May contain PII hence declared as a view (so PII is not persisted after the pipeline has been run |
+| clean           | Table | Table containing data that has passed expectations and therefore is not expected to contain PII  |
+| redacted        | Table | Table containing data that has failed expectations and therefore is expected to contain PII but in which that PII has been redacted based on the specified actions |
+| clean_processed | Table | A union of clean and redacted, creating a table that contains either data that has passed expectations and therefore is not expected to contain PII or data that is expected to contain PII but has been redacted based on the specified actions |
+
+The following monitoring tables are created by this pipeline:
+
+| Name                      | Type  | Description                                                                    |
+| ------------              | ----  | -----------                                                                    |
+| event_logs                | Table | Raw DLT event logs relating to the running and management of the pipeline      |
+| audit_logs                | Table | Logs capturing the management events relating to the pipeline                  |
+| data_quality_logs         | Table | Logs capturing the DQ metrics relating to the pipeline                         |
+| flow_logs                 | Table | Logs capturing the runtime events relating to the pipeline                     |
+
 ## Run the Job
 
 When everything is set up correctly, run the MT Job and you should see something like this...
@@ -74,20 +95,6 @@ The expectations evaluated against our sample data:
 
 ![image](https://user-images.githubusercontent.com/43955924/160144577-84870f68-9460-45ed-b732-0865ac8cc63e.png)
 
-## Output Tables
-
-The following data tables and views are created by this pipeline:
-
-| Name            | Type  | Description         |
-| ------------    | ----  | -----------         |
-| staging         | View  | Initial view that data is load into. May contain PII hence declared as a view (so PII is not persisted after the pipeline has been run |
-| quarantine      | View  | View containing data that has failed expectations. May contain PII hence declared as a view (so PII is not persisted after the pipeline has been run |
-| clean           | Table | Table containing data that has passed expectations and therefore is not expected to contain PII  |
-| redacted        | Table | Table containing data that has failed expectations and therefore is expected to contain PII but in which that PII has been redacted based on the specified actions |
-| clean_processed | Table | A union of clean and redacted, creating a table that contains either data that has passed expectations and therefore is not expected to contain PII or data that is expected to contain PII but has been redacted based on the specified actions |
-
-The following monitoring tables are created by this pipeline:
-
 ## Firewall Rules
 
 The [pii_firewall_rules.json](expectations/pii_firewall_rules.json) file is the main way that you can customise the behaviour of how the detection/redaction/tagging of data works. Within the file you'll notice a number of rules defined as follows:
@@ -100,6 +107,13 @@ The [pii_firewall_rules.json](expectations/pii_firewall_rules.json) file is the 
 "tag":""
 ```
 Every rule that you specify here will be applied against every column of your input data. 
+
+| Element    | Mandatory Yes/No  | Options | Description  |
+| Name       | Yes               | any string                                      | The name of the expectation. {} will be replaced by the column name. |
+| constraint | Yes               | a valid SQL expression which returns a boolean  |  |
+| action     | No                | a valid SQL expression                          |  |
+| mode       | Yes               | REDACT,TAG,REDACT_AND_TAG                       | |
+| tag        | No                | any string  | The comment to be added to any columns found to contain the. {} will be replaced by the column name. |
 
 ## Next Steps
 
