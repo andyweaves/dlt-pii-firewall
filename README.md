@@ -78,13 +78,13 @@ The expectations evaluated against our sample data:
 
 The following data tables and views are created by this pipeline:
 
-| Name            | Type | Description |
-| ------------    | ---- | ----------- |
-| staging         | View |             |
-| quarantine      | View |             |
-| clean           | View |             |
-| redacted        | View |             |
-| clean_processed | View |             |
+| Name            | Type  | Description         |
+| ------------    | ----  | -----------         |
+| staging         | View  | Initial view that data is load into. May contain PII hence declared as a view (so PII is not persisted after the pipeline has been run |
+| quarantine      | View  | View containing data that has failed expectations. May contain PII hence declared as a view (so PII is not persisted after the pipeline has been run |
+| clean           | Table | Table containing data that has passed expectations and therefore is not expected to contain PII  |
+| redacted        | Table | Table containing data that has failed expectations and therefore is expected to contain PII but in which that PII has been redacted based on the specified actions |
+| clean_processed | Table | A union of clean and redacted, creating a table that contains either data that has passed expectations and therefore is not expected to contain PII or data that is expected to contain PII but has been redacted based on the specified actions |
 
 The following monitoring tables are created by this pipeline:
 
@@ -100,11 +100,6 @@ The [pii_firewall_rules.json](expectations/pii_firewall_rules.json) file is the 
 "tag":""
 ```
 Every rule that you specify here will be applied against every column of your input data. 
-
-| Syntax | Description |
-| --- | ----------- |
-| Header | Title |
-| Paragraph | Text |
 
 ## Next Steps
 
