@@ -106,11 +106,11 @@ The [pii_firewall_rules.json](expectations/pii_firewall_rules.json) file is the 
 "mode": "",
 "tag":""
 ```
-Every rule that you specify here will be applied against every column of your input data. 
+Every rule that you specify here will be applied against every column of your input data. To add new rules, just add a new JSON object as follows:
 
 | Element    | Is Mandatory | Can Contain | Description |
 |------------|-----------|---------|-------------|
-| Name       | Yes | any string | The name of the expectation. {} will be replaced by the column name.|
+| name       | Yes | any string | The name of the expectation. {} will be replaced by the column name.|
 | constraint | Yes | a valid SQL invariant  | The expectation on which success or failure will determine whether the row contains PII or not. |
 | action     | No  | a valid SQL expression | The action that will be applied if any rows in the column fail when evaluated against their expectation AND the mode selected is REDACT or REDACT_AND_TAG |
 | mode       | Yes | One of "REDACT", "TAG", or "REDACT_AND_TAG" | Whether to REDACT, just TAG or REDACT_AND_TAG all of the rows in any column if any rows in the column fail when evaluated against their expectation  |
