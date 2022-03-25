@@ -27,13 +27,19 @@ To get this pipeline running on your environment, please use the following steps
    * For AWS add the ```instance_profile_arn``` to the aws_attributes object.
    * For Azure add the Service Principal secrets to the ```spark_conf``` object.
    * For GCP add the ```google_service_account``` to the  ```gcp_attributes``` object.
-
+6. As well as the DLT pipeline, the project contains the notebook [03_tag_pii.py](notebooks/03_tag_pii.py). This is designed to run after the DLT pipeline has finished, and tag databases/tables/columns appropriate to confirm that:
+   * They have been scanned for PII
+   * That PII has either been found or not found
+   * Where PII has been found, add a customisable comment to the column it was found in
+7. In order to set this up to run, 
 
 ## Firewall Rules
 
+The (pii_firewall_rules.json)[expectations/pii_firewall_rules.json] file is the main way that you can customise the behaviour of how the detection/redaction/tagging of data works.
+
 ## Run the Job
 
-When everything is set up correctly you should see something like this...
+When everything is set up correctly, run the MT Job and you should see something like this...
 
 ### 1. Multi-step job to automatically detect, redact and tag PII:
 
