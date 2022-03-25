@@ -35,7 +35,15 @@ To get this pipeline running on your environment, please use the following steps
 
 ## Firewall Rules
 
-The (pii_firewall_rules.json)[expectations/pii_firewall_rules.json] file is the main way that you can customise the behaviour of how the detection/redaction/tagging of data works.
+The (pii_firewall_rules.json)[expectations/pii_firewall_rules.json] file is the main way that you can customise the behaviour of how the detection/redaction/tagging of data works. Within the file you'll notice a number of rules defined as follows:
+
+```
+"name": "", 
+"constraint": "",
+"action": "",
+"mode": "",
+"tag":""
+```
 
 ## Run the Job
 
