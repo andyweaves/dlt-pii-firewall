@@ -1,11 +1,11 @@
 {
-    "name": "DLT Detect and Redact PII",
+    "name": "DLT PII Firewall",
     "storage": "",
     "configuration": {
-        "table_path": "",
-        "input_path": "",
-        "storage_path": "",
-        "expectations_path": "/Workspace/Repos/<username>/dlt-pii-detection/expectations/pii_detection.json"
+        "TABLE_PATH": "",
+        "INPUT_PATH": "",
+        "STORAGE_PATH": "",
+        "EXPECTATIONS_PATH": "/Workspace/Repos/<username>/dlt-pii-firewall/expectations/pii_detection.json"
     },
     "clusters": [
         {
@@ -19,12 +19,12 @@
     "libraries": [
         {
             "notebook": {
-                "path": "/Repos/<username>/dlt-pii-detection/notebooks/01_observability"
+                "path": "/Repos/<username>/dlt-pii-firewall/notebooks/01_observability"
             }
         },
         {
             "notebook": {
-                "path": "/Repos/<username>/dlt-pii-detection/notebooks/02_detect_and_redact_pii"
+                "path": "/Repos/<username>/dlt-pii-firewall/notebooks/02_detect_and_redact_pii"
             }
         }
     ],

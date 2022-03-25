@@ -1,7 +1,7 @@
 # Databricks notebook source
-input_path = spark.conf.get("input_path")
-table_path = spark.conf.get("table_path")
-expectations_path = spark.conf.get("expectations_path")
+INPUT_PATH = spark.conf.get("INPUT_PATH")
+TABLE_PATH = spark.conf.get("TABLE_PATH")
+EXPECTATIONS_PATH = spark.conf.get("EXPECTATIONS_PATH")
 
 # COMMAND ----------
 
@@ -23,8 +23,8 @@ def get_expectations_and_actions(columns, expectations_path):
 
 # COMMAND ----------
 
-columns = spark.read.parquet(input_path).columns
-expectations_and_actions = get_expectations_and_actions(columns, expectations_path)
+columns = spark.read.parquet(INPUT_PATH).columns
+expectations_and_actions = get_expectations_and_actions(columns, EXPECTATIONS_PATH)
 
 # When DLT fully supports Repos we'll be able to use this... 
 #f"file:{os.path.dirname(os.getcwd())}/expectations/pii_detection.csv"
@@ -48,7 +48,7 @@ constraints = dict(zip(expectations_and_actions.expectation, expectations_and_ac
 def get_select_expr(columns):
 
   # Drop duplicates because otherwise we'll need to handle duplicate columns in the downstream tables, which will get messy...
-  pdf = spark.read.parquet(input_path).withColumn("failed_expectations", F.array([F.expr(value) for key, value in constraints.items()])).withColumn("failed_expectations", get_failed_expectations("failed_expectations")).filter(F.size("failed_expectations") > 0).select(explode("failed_expectations").alias("expectation")).distinct().withColumn("failed_column", regexp_extract(col("expectation"), "\`(.*?)\`", 1)).toPandas().drop_duplicates(subset = ["failed_column"]).merge(expectations_and_actions, on="expectation")
+  pdf = spark.read.parquet(INPUT_PATH).withColumn("failed_expectations", F.array([F.expr(value) for key, value in constraints.items()])).withColumn("failed_expectations", get_failed_expectations("failed_expectations")).filter(F.size("failed_expectations") > 0).select(explode("failed_expectations").alias("expectation")).distinct().withColumn("failed_column", regexp_extract(col("expectation"), "\`(.*?)\`", 1)).toPandas().drop_duplicates(subset = ["failed_column"]).merge(expectations_and_actions, on="expectation")
   
   pii_detected = False
   
@@ -82,7 +82,7 @@ import dlt
 )
 def staging():
   return (
-    spark.read.parquet(input_path)
+    spark.read.parquet(INPUT_PATH)
   )
 
 # COMMAND ----------
@@ -90,7 +90,7 @@ def staging():
 @dlt.table(
   name="clean",
   comment="Clean data that has been scanned without finding any PII",
-  path=f"{table_path}/clean/",
+  path=f"{TABLE_PATH}/clean/",
   table_properties={"pii_scanned" : "True", "pii_found": "False"}
 )
 @dlt.expect_all_or_drop(constraints) 
@@ -118,7 +118,7 @@ def quarantine():
 @dlt.table(
   name="redacted",
   comment="Data in which PII has been found and redacted based on a set of predefined rules",
-  path=f"{table_path}/redacted/",
+  path=f"{TABLE_PATH}/redacted/",
   table_properties={"pii_scanned" : "True", "pii_found": str(pii_detected)}
 )
 def redacted(select_expr = select_expr):
@@ -130,7 +130,7 @@ def redacted(select_expr = select_expr):
 @dlt.table(
   name="clean_processed",
   comment="Data that has been scanned without any PII being found or where PII has been found and redacted based on a set of predefined rules",
-  path=f"{table_path}/clean_processed/",
+  path=f"{TABLE_PATH}/clean_processed/",
   table_properties={"pii_scanned" : "True", "pii_found": str(pii_detected)}
 )
 def clean_processed():
