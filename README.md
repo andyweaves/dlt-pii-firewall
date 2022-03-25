@@ -109,6 +109,7 @@ The [pii_firewall_rules.json](expectations/pii_firewall_rules.json) file is the 
 Every rule that you specify here will be applied against every column of your input data. 
 
 | Element    | Mandatory | Options | Description |
+|------------|-----------|---------|-------------|
 | Name       | Yes | any string | The name of the expectation. {} will be replaced by the column name.|
 | constraint | Yes | a valid SQL invariant  | The expectation on which success or failure will determine whether the row contains PII or not. |
 | action     | No  | a valid SQL expression | The action that will be applied if any rows in the column fail when evaluated against their expectation AND the mode selected is REDACT or REDACT_AND_TAG |
