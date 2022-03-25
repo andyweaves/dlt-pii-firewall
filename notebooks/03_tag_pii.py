@@ -1,7 +1,7 @@
 # Databricks notebook source
 dbutils.widgets.text("DATABASE_NAME", "dlt_pii")
 dbutils.widgets.multiselect("TABLE_NAMES", defaultValue="redacted", choices=["clean", "clean_processed", "redacted"])
-dbutils.widgets.text("EXPECTATIONS_PATH", "/Workspace/Repos/andrew.weaver@databricks.com/dlt-pii-detection/expectations/pii_detection.json")
+dbutils.widgets.text("EXPECTATIONS_PATH", "/Workspace/Repos/andrew.weaver@databricks.com/dlt-pii-firewall/expectations/pii_detection.json")
 
 DATABASE_NAME = dbutils.widgets.get("DATABASE_NAME")
 TABLE_NAMES = dbutils.widgets.get("TABLE_NAMES").split(",")
@@ -14,14 +14,14 @@ import json
 
 def get_expectations_and_actions(columns, expectations_path):
 
-  expectations_and_actions = pd.DataFrame(columns=["expectation", "constraint", "mode", "action"])
+  expectations_and_actions = pd.DataFrame(columns=["expectation", "constraint", "mode", "action", "tag"])
 
   with open(expectations_path, 'r') as f:
     raw_rules = json.load(f)["expectations"]
 
   for column in columns:
     for rule in raw_rules:
-      expectations_and_actions = expectations_and_actions.append({"expectation": rule["name"].replace("{}", f"`{column}`"), "constraint": rule["constraint"].replace("{}", f"`{column}`"), "mode": rule["mode"], "action": rule["action"].replace("{}", f"`{column}`")}, ignore_index=True)
+      expectations_and_actions = expectations_and_actions.append({"expectation": str(rule.get("name")).replace("{}", f"`{column}`"), "constraint": rule["constraint"].replace("{}", f"`{column}`"), "mode": rule["mode"], "action": str(rule.get("action")).replace("{}", f"`{column}`"), "tag": str(rule.get("tag")).replace("{}", f"`{column}`")}, ignore_index=True)
       
   return expectations_and_actions
 
@@ -47,8 +47,8 @@ if len(failed_expectations) > 0:
   for table in TABLE_NAMES:
     for index, failed_expectation in failed_expectations.iterrows():
       if failed_expectation["mode"] in ["TAG", "REDACT_AND_TAG"]:
-        print(f"Adding comment '{failed_expectation['expectation']}' to column {failed_expectation['failed_column']} in table {DATABASE_NAME}.{table} because mode is {failed_expectation['mode']}")
-        spark.sql(f"ALTER TABLE {DATABASE_NAME}.{table} CHANGE {failed_expectation['failed_column']} COMMENT '{failed_expectation['expectation']}'")
+        print(f"Adding comment '{failed_expectation['tag']}' to column {failed_expectation['failed_column']} in table {DATABASE_NAME}.{table} because mode is {failed_expectation['mode']}")
+        spark.sql(f"ALTER TABLE {DATABASE_NAME}.{table} CHANGE {failed_expectation['failed_column']} COMMENT '{failed_expectation['tag']}'")
 else: 
   spark.sql(f"ALTER DATABASE {DATABASE_NAME} SET DBPROPERTIES ('pii_scanned' = 'True')")
   spark.sql(f"ALTER DATABASE {DATABASE_NAME} SET DBPROPERTIES ('pii_found' = 'False')")

@@ -10,14 +10,14 @@ import json
 
 def get_expectations_and_actions(columns, expectations_path):
 
-  expectations_and_actions = pd.DataFrame(columns=["expectation", "constraint", "mode", "action"])
+  expectations_and_actions = pd.DataFrame(columns=["expectation", "constraint", "mode", "action", "tag"])
 
   with open(expectations_path, 'r') as f:
     raw_rules = json.load(f)["expectations"]
 
   for column in columns:
     for rule in raw_rules:
-      expectations_and_actions = expectations_and_actions.append({"expectation": rule["name"].replace("{}", f"`{column}`"), "constraint": rule["constraint"].replace("{}", f"`{column}`"), "mode": rule["mode"], "action": rule["action"].replace("{}", f"`{column}`")}, ignore_index=True)
+      expectations_and_actions = expectations_and_actions.append({"expectation": str(rule.get("name")).replace("{}", f"`{column}`"), "constraint": rule["constraint"].replace("{}", f"`{column}`"), "mode": rule["mode"], "action": str(rule.get("action")).replace("{}", f"`{column}`"), "tag": str(rule.get("tag")).replace("{}", f"`{column}`")}, ignore_index=True)
       
   return expectations_and_actions
 
@@ -56,7 +56,6 @@ def get_select_expr(columns):
     pii_detected = True
     
   # Todo - can this all be done with list comprehension? That would be more performant...  
-    
   sql = [x for x in columns if x not in pdf["failed_column"].tolist()]
   
   def generate_sql(row):
