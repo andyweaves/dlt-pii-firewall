@@ -1,9 +1,12 @@
-# dlt-pii-firewall
-Using [Delta Live Tables](https://databricks.com/discover/pages/getting-started-with-delta-live-tables) to identify and redact potential PII data!
-
-[Delta Live Tables](https://databricks.com/discover/pages/getting-started-with-delta-live-tables) it easy to build and manage reliable data pipelines that deliver high-quality data on Delta Lake.
+# DLT PII Firewall
 
 > :warning: **THIS PROJECT IS PROVIDED AS-IS WITHOUT ANY GUARANTEES**: we make no claims as to the accuracy of the PII detection provided here, and if you use it it is **YOUR RESPONSIBILITY** to ensure that the example regexes and detection/redaction/tagging meets your internal, legal or regulatory requirements.
+
+### Using [Delta Live Tables](https://databricks.com/discover/pages/getting-started-with-delta-live-tables) to identify and redact potential PII data!
+
+[Delta Live Tables](https://databricks.com/discover/pages/getting-started-with-delta-live-tables) makes it easy to build and manage reliable data pipelines that deliver high-quality data on Delta Lake.
+
+
 
 The project is currently designed to be run as a [multi task job](https://docs.databricks.com/data-engineering/jobs/jobs-quickstart.html) on the world's favourite Lakehouse Platform... [Databricks](https://databricks.com/)!
 
