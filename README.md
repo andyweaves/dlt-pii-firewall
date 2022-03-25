@@ -20,7 +20,7 @@ To get this pipeline running on your environment, please use the following steps
    * ```INPUT_PATH```: The path on DBFS or cloud storage where the input data is located. Right now the code is expecting to find parquet files at this path
    * ```TABLE_PATH```: The path to write out all of the tables created by the pipeline to.
    * ```STORAGE_PATH```: A location on DBFS or cloud storage where output data and metadata required for the pipeline execution are stored. This should match the ```Storage Location``` below.
-   * ```EXPECTATIONS_PATH```: The path to the (pii_firewall_rules.json)[expectations/pii_firewall_rules.json] config file once you've checked out the Repo. This is the main configuration file used to customise the behaviour of the detection/redaction/tagging of data. See [The Firewall Rules](#The Firewall Rules) below for more details
+   * ```EXPECTATIONS_PATH```: The path to the (pii_firewall_rules.json)[expectations/pii_firewall_rules.json] config file once you've checked out the Repo. This is the main configuration file used to customise the behaviour of the detection/redaction/tagging of data. See **Firewall Rules** below for more details
    * ```Target```: The name of a database for persisting pipeline output data. Configuring the target setting allows you to view and query the pipeline output data from the Databricks UI.
    * ```Storage Location```: A location on DBFS or cloud storage where output data and metadata required for the pipeline execution are stored. This should match the ```STORAGE_PATH``` above.
 5. Note: once you’ve edited the settings that are configurable via the UI, you’ll need to edit the JSON so that you can add the configuration needed to authenticate with your chosen cloud storage:
@@ -29,7 +29,7 @@ To get this pipeline running on your environment, please use the following steps
    * For GCP add the ```google_service_account``` to the  ```gcp_attributes``` object.
 
 
-## The Firewall Rules
+## Firewall Rules
 
 ## Run the Job
 
