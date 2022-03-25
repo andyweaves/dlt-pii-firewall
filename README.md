@@ -17,7 +17,19 @@ To get this pipeline running on your environment, please use the following steps
    * ```OUTPUT_DIR```: The path on DBFS or cloud storage to write the generated data out to
 3. Clone this Github Repo using our Repos for Git Integration (see the docs for [AWS](https://docs.databricks.com/repos/index.html), [Azure](https://docs.microsoft.com/en-us/azure/databricks/repos/), [GCP](https://docs.gcp.databricks.com/repos/index.html)). 
 4. Create a new DLT pipeline, selecting [01_observability.py](notebooks/01_observability.py) and [02_detect_and_redact_pii.py](notebooks/02_detect_and_redact_pii.py) as Notebook Libraries (see the docs for [AWS](https://docs.databricks.com/data-engineering/delta-live-tables/delta-live-tables-ui.html), [Azure](https://docs.microsoft.com/en-us/azure/databricks/data-engineering/delta-live-tables/delta-live-tables-ui), [GCP](https://docs.gcp.databricks.com/data-engineering/delta-live-tables/delta-live-tables-ui.html)). You’ll need add the following Configuration:
-   * ```INPUT_PATH```: The path on DBFS or cloud storage where the input data is located. Right now the code is expecting to find parquet files at this path
+   * ```INPUT_PATH```: The path on DBFS or cloud storage where the input data is located. Right now the code is expecting to find parquet files at this path, to change this to a different type of file just modify the code that defines the ```staging``` view in [02_detect_and_redact_pii.py](notebooks/02_detect_and_redact_pii.py):
+     ```
+     import dlt
+
+      @dlt.view(
+        name="staging",
+        comment="Raw data that has not been scanned for PII"
+      )
+      def staging():
+        return (
+          spark.read.parquet(INPUT_PATH)
+        )
+      ```
    * ```TABLE_PATH```: The path to write out all of the tables created by the pipeline to.
    * ```STORAGE_PATH```: A location on DBFS or cloud storage where output data and metadata required for the pipeline execution are stored. This should match the ```Storage Location``` entered below.
    * ```EXPECTATIONS_PATH```: The path to the [pii_firewall_rules.json](expectations/pii_firewall_rules.json) config file once you've checked out the Repo. This is the main configuration file used to customise the behaviour of the detection/redaction/tagging of data. See **Firewall Rules** below for more details
@@ -77,6 +89,7 @@ The [pii_firewall_rules.json](expectations/pii_firewall_rules.json) file is the 
 "mode": "",
 "tag":""
 ```
+Every rule that you specify here will be evaluated as against every column of your input data. 
 
 ## Next Steps
 
