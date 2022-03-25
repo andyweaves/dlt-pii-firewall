@@ -89,7 +89,7 @@ The [pii_firewall_rules.json](expectations/pii_firewall_rules.json) file is the 
 "mode": "",
 "tag":""
 ```
-Every rule that you specify here will be evaluated as against every column of your input data. 
+Every rule that you specify here will be applied against every column of your input data. 
 
 ## Next Steps
 
