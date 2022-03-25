@@ -52,10 +52,12 @@ To get this pipeline running on your environment, please use the following steps
 
 The following data tables and views are created by this pipeline:
 
+![image](https://user-images.githubusercontent.com/43955924/160202465-2c9783d2-47cc-4790-8293-cf13f89bce4c.png)
+
 | Name            | Type  | Description         |
 | ------------    | ----  | -----------         |
-| staging         | View  | Initial view that data is load into. May contain PII hence declared as a view (so PII is not persisted after the pipeline has been run |
-| quarantine      | View  | View containing data that has failed expectations. May contain PII hence declared as a view (so PII is not persisted after the pipeline has been run |
+| staging         | View  | Initial view that data is load into. May contain PII and therefore declared as a view (so that PII is not persisted after the pipeline has been run |
+| quarantine      | View  | View containing data that has failed expectations. May contain PII and therefore declared as a view (so that PII is not persisted after the pipeline has been run |
 | clean           | Table | Table containing data that has passed expectations and therefore is not expected to contain PII  |
 | redacted        | Table | Table containing data that has failed expectations and therefore is expected to contain PII but in which that PII has been redacted based on the specified actions |
 | clean_processed | Table | A union of clean and redacted, creating a table that contains either data that has passed expectations and therefore is not expected to contain PII or data that is expected to contain PII but has been redacted based on the specified actions |
