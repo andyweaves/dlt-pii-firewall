@@ -10,7 +10,7 @@
 
 To get this pipeline running on your environment, please use the following steps:
 
-1. First you need some input data to run the pipeline on. If you don't have any data, or just want to try it out, you can use the [00_generate_data](notebooks/00_generate_data.py) notebook to generate some, using the following options to customise that data generation:
+1. First you need some input data to run the pipeline on. If you don't have any data, or just want to try it out, you can use the [00_generate_data.py](notebooks/00_generate_data.py) notebook to generate some, using the following options to customise that data generation:
    * ```GENERATE_CLEAN_DATA```: Whether to generate 4 records of artificially created "clean data" specifically designed not to get evaluated as PII
    * ```GENERATE_PII_DATA```: Whether to generate fake PII data
    * ```NUM_ROWS```: The number of rows of fake PII data to generate
@@ -21,6 +21,8 @@ To get this pipeline running on your environment, please use the following steps
    * ```TABLE_PATH```: 
    * ```STORAGE_PATH```: 
    * ```EXPECTATIONS_PATH```:
+   * ```Target```:
+   * ```Storage Location```:
 5. Note: once you’ve edited the settings that are configurable via the UI, you’ll need to edit the JSON so that you can add the configuration needed to authenticate with your chosen cloud storage:
    * For AWS add the ```instance_profile_arn``` to the aws_attributes object.
    * For Azure add the Service Principal secrets to the ```spark_conf``` object.
@@ -37,11 +39,17 @@ When everything is set up correctly you should see something like this...
 
 #### 2. DLT pipeline to automatically detect and redact PII:
 
+The pipeline following a successful run:
+
 ![image](https://user-images.githubusercontent.com/43955924/160136979-a16fc3c8-1fbe-4e0f-8660-24b4e8f52c0e.png)
+
+The expectations evaluated against the clean table:
 
 ![image](https://user-images.githubusercontent.com/43955924/160137248-386e649e-d1a8-4c24-adeb-46bf734d7fad.png)
 
-#### 3. Example of the column-level PII tagging applied:
+#### 3. Example of the column level PII tagging applied:
+
+![image](https://user-images.githubusercontent.com/43955924/160141168-07688e9e-b02c-4712-947f-3ddd79173942.png)
 
 #### 4. Example of the redacted output table:
 
