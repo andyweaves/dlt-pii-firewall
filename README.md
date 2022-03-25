@@ -76,7 +76,17 @@ The expectations evaluated against our sample data:
 
 ## Output Tables
 
+The following data tables and views are created by this pipeline:
 
+| Name            | Type | Description |
+| ------------    | ---- | ----------- |
+| staging         | View |             |
+| quarantine      | View |             |
+| clean           | View |             |
+| redacted        | View |             |
+| clean_processed | View |             |
+
+The following monitoring tables are created by this pipeline:
 
 ## Firewall Rules
 
@@ -90,6 +100,11 @@ The [pii_firewall_rules.json](expectations/pii_firewall_rules.json) file is the 
 "tag":""
 ```
 Every rule that you specify here will be applied against every column of your input data. 
+
+| Syntax | Description |
+| --- | ----------- |
+| Header | Title |
+| Paragraph | Text |
 
 ## Next Steps
 
