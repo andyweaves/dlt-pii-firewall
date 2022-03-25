@@ -2,11 +2,11 @@
 
 > :warning: **THIS PROJECT IS PROVIDED AS-IS WITHOUT ANY GUARANTEES**: we make no claims as to the accuracy of the PII detection provided here, and if you use it it is **YOUR RESPONSIBILITY** to ensure that the example regexes and detection/redaction/tagging meets your internal, legal or regulatory requirements.
 
-### Using [Delta Live Tables](https://databricks.com/discover/pages/getting-started-with-delta-live-tables) to identify and redact potential PII data!
+## Using [Delta Live Tables](https://databricks.com/discover/pages/getting-started-with-delta-live-tables) to identify and redact potential PII data!
 
 [Delta Live Tables](https://databricks.com/discover/pages/getting-started-with-delta-live-tables) makes it easy to build and manage reliable data pipelines that deliver high-quality data on Delta Lake.
 
-### Setup
+## Setup
 
 To get this pipeline running on your environment, please use the following steps:
 
@@ -31,13 +31,13 @@ To get this pipeline running on your environment, please use the following steps
 
 
 
-### Run the Job
+## Run the Job
 
 When everything is set up correctly you should see something like this...
 
-#### 1. Multi-step job to automatically detect, redact and tag PII:
+### 1. Multi-step job to automatically detect, redact and tag PII:
 
-#### 2. DLT pipeline to automatically detect and redact PII:
+### 2. DLT pipeline to automatically detect and redact PII:
 
 The pipeline following a successful run:
 
@@ -47,19 +47,19 @@ The expectations evaluated against our sample data:
 
 ![image](https://user-images.githubusercontent.com/43955924/160137248-386e649e-d1a8-4c24-adeb-46bf734d7fad.png)
 
-#### 3. Example of the column level PII tagging applied:
+### 3. Example of the column level PII tagging applied:
 
 ![image](https://user-images.githubusercontent.com/43955924/160141168-07688e9e-b02c-4712-947f-3ddd79173942.png)
 
-#### 4. Example of the redacted output table:
+### 4. Example of the redacted output table:
 
 ![image](https://user-images.githubusercontent.com/43955924/160144577-84870f68-9460-45ed-b732-0865ac8cc63e.png)
 
-#### Next Steps:
+## Next Steps:
 
 There are some items of PII in the generated data that intentionally fail to get picked up fully by the expectations:
 
-  * ```name```:
-  * ```freetext```:
+  * ```name```: It's impossible to match names via Regex, particularly when multiple languages need to be considered. This field was left in intentionally to demonstrate that there are limitations to the Regex approach.
+  * ```freetext```: Expecations evaluate against each row, but once a row fails for a given column, any other expectations are not considered (the row has failed for that column, move on. Even if expectations worked differently, evaluating each expectation against every row for every column multiple times would be hugely expensive. Right now what this means is that the first PII detected in a field which has multiple types of PII will be flagged as the reason that column failed, and the redaction step for that PII element is the only that will be applied. Again, this field was left in intentionally to demonstrate that there are limitations with this approach.
 
 In order to handle PII like this we'll need to use more sophisticated techniques like Named Entity Recognition and NLP. Stay tuned for more exploration on this topic!
