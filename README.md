@@ -11,7 +11,14 @@
 To get this pipeline running on your environment, please use the following steps:
 
 1. Clone this Github Repo using our Repos for Git Integration (see the docs for [AWS](https://docs.databricks.com/repos/index.html), [Azure](https://docs.microsoft.com/en-us/azure/databricks/repos/), [GCP](https://docs.gcp.databricks.com/repos/index.html)). 
-
+2. Create a new DLT pipeline, selecting XXX and YYY as Notebook Libraries (see the docs for [AWS](https://docs.databricks.com/data-engineering/delta-live-tables/delta-live-tables-ui.html), [Azure](https://docs.microsoft.com/en-us/azure/databricks/data-engineering/delta-live-tables/delta-live-tables-ui), [GCP](https://docs.gcp.databricks.com/data-engineering/delta-live-tables/delta-live-tables-ui.html)). You’ll need add the following Configuration:
+   * ```INPUT_PATH```: The cloud storage path that you’ve configured for audit log delivery. This will usually be a protected storage account which isn’t exposed to your Databricks users.
+   * ```OUTPUT_PATH```: The cloud storage path you want to use for your audit log Delta Lakes. This will usually be a protected storage account which isn’t exposed to your Databricks users.
+   * ```CONFIG_FILE```: The path to the [audit_logs.json](configuration/audit_logs.json) file once checked out in your repo. 
+3. Note: once you’ve edited the settings that are configurable via the UI, you’ll need to edit the JSON so that you can add the configuration needed to authenticate with your ```INPUT_PATH``` and ```OUTPUT_PATH``` to the clusters object:
+   * For AWS add the ```instance_profile_arn``` to the aws_attributes object.
+   * For Azure add the Service Principal secrets to the ```spark_conf``` object.
+   * For GCP add the ```google_service_account``` to the  ```gcp_attributes``` object.
 
 
 
