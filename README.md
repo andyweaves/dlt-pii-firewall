@@ -17,12 +17,12 @@ To get this pipeline running on your environment, please use the following steps
    * ```OUTPUT_DIR```: The path on DBFS or cloud storage to write the generated data out to
 3. Clone this Github Repo using our Repos for Git Integration (see the docs for [AWS](https://docs.databricks.com/repos/index.html), [Azure](https://docs.microsoft.com/en-us/azure/databricks/repos/), [GCP](https://docs.gcp.databricks.com/repos/index.html)). 
 4. Create a new DLT pipeline, selecting [01_observability.py](notebooks/01_observability.py) and [02_detect_and_redact_pii.py](notebooks/02_detect_and_redact_pii.py) as Notebook Libraries (see the docs for [AWS](https://docs.databricks.com/data-engineering/delta-live-tables/delta-live-tables-ui.html), [Azure](https://docs.microsoft.com/en-us/azure/databricks/data-engineering/delta-live-tables/delta-live-tables-ui), [GCP](https://docs.gcp.databricks.com/data-engineering/delta-live-tables/delta-live-tables-ui.html)). You’ll need add the following Configuration:
-   * ```INPUT_PATH```: 
-   * ```TABLE_PATH```: 
-   * ```STORAGE_PATH```: 
-   * ```EXPECTATIONS_PATH```:
-   * ```Target```:
-   * ```Storage Location```:
+   * ```INPUT_PATH```: The path on DBFS or cloud storage where the input data is located. Right now the code is expecting to find parquet files at this path
+   * ```TABLE_PATH```: The path to write out all of the tables created by the pipeline to.
+   * ```STORAGE_PATH```: A location on DBFS or cloud storage where output data and metadata required for the pipeline execution are stored. This should match the ```Storage Location``` below.
+   * ```EXPECTATIONS_PATH```: The path to (pii_firewall_rules.json)[expectations/pii_firewall_rules.json] once you've checked out the Repo. This is the main configuration file used to customise the behaviour of the detection/redaction/tagging of data evaluated as PII.
+   * ```Target```: The name of a database for persisting pipeline output data. Configuring the target setting allows you to view and query the pipeline output data from the Databricks UI.
+   * ```Storage Location```: A location on DBFS or cloud storage where output data and metadata required for the pipeline execution are stored. This should match the ```STORAGE_PATH``` above.
 5. Note: once you’ve edited the settings that are configurable via the UI, you’ll need to edit the JSON so that you can add the configuration needed to authenticate with your chosen cloud storage:
    * For AWS add the ```instance_profile_arn``` to the aws_attributes object.
    * For Azure add the Service Principal secrets to the ```spark_conf``` object.
@@ -43,7 +43,7 @@ The pipeline following a successful run:
 
 ![image](https://user-images.githubusercontent.com/43955924/160136979-a16fc3c8-1fbe-4e0f-8660-24b4e8f52c0e.png)
 
-The expectations evaluated against the clean table:
+The expectations evaluated against our sample data:
 
 ![image](https://user-images.githubusercontent.com/43955924/160137248-386e649e-d1a8-4c24-adeb-46bf734d7fad.png)
 
