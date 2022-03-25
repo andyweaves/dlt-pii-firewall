@@ -53,10 +53,13 @@ The expectations evaluated against our sample data:
 
 #### 4. Example of the redacted output table:
 
-In the [notebooks folder](notebooks/) you will find the following:
+![image](https://user-images.githubusercontent.com/43955924/160144577-84870f68-9460-45ed-b732-0865ac8cc63e.png)
 
-* [00_generate_data.py](notebooks/00_generate_data.py) - a notebook that can be used to generate fake PII data
-* [01_observability.py](notebooks/01_observability.py) - a Delta Live Table notebook that creates an observability pipeline for our DLT workloads
-* [02_detect_and_redact_pii.py](notebooks/02_detect_and_redact_pii.py) - a Delta Live Table notebook that uses the expectations and actions defined in the same JSON file [here](expectations/pii_detection.json) to detect and redact PII
-* [03_tag_pii.py](notebooks/03_tag_pii.py) - a notebook that tags the generated databases/tables/columns based on the PII detected and actions taken
-* [04_cleanup.py](notebooks/04_cleanup.py) - a notebook that can be used to clean up the input, storage and output data so that it can be re-tested
+#### Next Steps:
+
+There are some items of PII in the generated data that intentionally fail to get picked up fully by the expectations:
+
+  * ```name```:
+  * ```freetext```:
+
+In order to handle PII like this we'll need to use more sophisticated techniques like Named Entity Recognition and NLP. Stay tuned for more exploration on this topic!
