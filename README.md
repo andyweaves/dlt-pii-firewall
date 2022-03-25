@@ -20,7 +20,7 @@ To get this pipeline running on your environment, please use the following steps
    * ```INPUT_PATH```: The path on DBFS or cloud storage where the input data is located. Right now the code is expecting to find parquet files at this path
    * ```TABLE_PATH```: The path to write out all of the tables created by the pipeline to.
    * ```STORAGE_PATH```: A location on DBFS or cloud storage where output data and metadata required for the pipeline execution are stored. This should match the ```Storage Location``` below.
-   * ```EXPECTATIONS_PATH```: The path to (pii_firewall_rules.json)[expectations/pii_firewall_rules.json] once you've checked out the Repo. This is the main configuration file used to customise the behaviour of the detection/redaction/tagging of data evaluated as PII.
+   * ```EXPECTATIONS_PATH```: The path to the (pii_firewall_rules.json)[expectations/pii_firewall_rules.json] config file once you've checked out the Repo. This is the main configuration file used to customise the behaviour of the detection/redaction/tagging of data. See [The Firewall Rules](#The Firewall Rules) below for more details
    * ```Target```: The name of a database for persisting pipeline output data. Configuring the target setting allows you to view and query the pipeline output data from the Databricks UI.
    * ```Storage Location```: A location on DBFS or cloud storage where output data and metadata required for the pipeline execution are stored. This should match the ```STORAGE_PATH``` above.
 5. Note: once you’ve edited the settings that are configurable via the UI, you’ll need to edit the JSON so that you can add the configuration needed to authenticate with your chosen cloud storage:
@@ -29,13 +29,15 @@ To get this pipeline running on your environment, please use the following steps
    * For GCP add the ```google_service_account``` to the  ```gcp_attributes``` object.
 
 
-
+## The Firewall Rules
 
 ## Run the Job
 
 When everything is set up correctly you should see something like this...
 
 ### 1. Multi-step job to automatically detect, redact and tag PII:
+
+![image](https://user-images.githubusercontent.com/43955924/160146555-376fd977-cd91-4cd7-919a-f6eaa84df73c.png)
 
 ### 2. DLT pipeline to automatically detect and redact PII:
 
@@ -55,7 +57,7 @@ The expectations evaluated against our sample data:
 
 ![image](https://user-images.githubusercontent.com/43955924/160144577-84870f68-9460-45ed-b732-0865ac8cc63e.png)
 
-## Next Steps:
+## Next Steps
 
 There are some items of PII in the generated data that intentionally fail to get picked up fully by the expectations:
 
