@@ -40,6 +40,13 @@
 			"mode": "REDACT_AND_TAG",
             "tag": "{} may contain anonymised ipv4 address"
 		},
+        {
+          "name": "{} may contain mac address", 
+		  "constraint": "CAST({} AS STRING) NOT REGEXP('^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$') AS result",
+		  "action": "sha2({}, 256) AS {}",
+		  "mode": "REDACT_AND_TAG",
+          "tag": "{} may contain sha2 hashed mac address" 
+        },
 		{
 			"name": "{} may contain iban", 
 			"constraint": "CAST({} AS STRING) NOT REGEXP('[a-zA-Z]{2}[0-9]{2}[a-zA-Z0-9]{4}[0-9]{7}([a-zA-Z0-9]?)+') AS result",
