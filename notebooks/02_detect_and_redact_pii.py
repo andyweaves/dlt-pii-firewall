@@ -1,7 +1,21 @@
 # Databricks notebook source
 INPUT_PATH = spark.conf.get("INPUT_PATH")
+INPUT_FORMAT = spark.conf.get("INPUT_FORMAT")
 TABLE_PATH = spark.conf.get("TABLE_PATH")
 EXPECTATIONS_PATH = spark.conf.get("EXPECTATIONS_PATH")
+
+# COMMAND ----------
+
+def get_spark_read(input_format, input_path):
+  
+  if input_format == "delta":
+    return spark.read(INPUT_PATH)
+  elif input_format == "parquet":
+    return spark.read.parquet(INPUT_PATH)
+  elif input_format == "json":
+    return spark.read.json(INPUT_PATH)
+  elif input_format == "csv":
+    return spark.read.csv(INPUT_PATH, header=True, inferSchema=True)
 
 # COMMAND ----------
 
@@ -23,7 +37,7 @@ def get_expectations_and_actions(columns, expectations_path):
 
 # COMMAND ----------
 
-columns = spark.read.parquet(INPUT_PATH).columns
+columns = get_spark_read(INPUT_FORMAT, INPUT_PATH).columns
 expectations_and_actions = get_expectations_and_actions(columns, EXPECTATIONS_PATH)
 
 # When DLT fully supports Repos we'll be able to use this... 
@@ -48,7 +62,7 @@ constraints = dict(zip(expectations_and_actions.expectation, expectations_and_ac
 def get_select_expr(columns):
 
   # Drop duplicates because otherwise we'll need to handle duplicate columns in the downstream tables, which will get messy...
-  pdf = spark.read.parquet(INPUT_PATH).withColumn("failed_expectations", F.array([F.expr(value) for key, value in constraints.items()])).withColumn("failed_expectations", get_failed_expectations("failed_expectations")).filter(F.size("failed_expectations") > 0).select(explode("failed_expectations").alias("expectation")).distinct().withColumn("failed_column", regexp_extract(col("expectation"), "\`(.*?)\`", 1)).toPandas().drop_duplicates(subset = ["failed_column"]).merge(expectations_and_actions, on="expectation")
+  pdf = get_spark_read(INPUT_FORMAT, INPUT_PATH).withColumn("failed_expectations", F.array([F.expr(value) for key, value in constraints.items()])).withColumn("failed_expectations", get_failed_expectations("failed_expectations")).filter(F.size("failed_expectations") > 0).select(explode("failed_expectations").alias("expectation")).distinct().withColumn("failed_column", regexp_extract(col("expectation"), "\`(.*?)\`", 1)).toPandas().drop_duplicates(subset = ["failed_column"]).merge(expectations_and_actions, on="expectation")
   
   pii_detected = False
   
@@ -82,7 +96,7 @@ import dlt
 )
 def staging():
   return (
-    spark.read.parquet(INPUT_PATH)
+    get_spark_read(INPUT_FORMAT, INPUT_PATH)
   )
 
 # COMMAND ----------

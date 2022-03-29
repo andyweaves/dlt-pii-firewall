@@ -3,7 +3,7 @@
 
 # COMMAND ----------
 
-dbutils.widgets.dropdown("NUM_ROWS", defaultValue="1000", choices=["50", "100", "1000", "3000", "5000", "10000", "250000"])
+dbutils.widgets.dropdown("NUM_ROWS", defaultValue="1000", choices=["50", "100", "1000", "3000", "5000", "10000", "250000", "1000000", "5000000", "10000000"])
 dbutils.widgets.text("OUTPUT_DIR", defaultValue="dbfs:/dlt_pii/customer_raw")
 dbutils.widgets.dropdown("GENERATE_CLEAN_DATA", defaultValue="False", choices=["True", "False"])
 dbutils.widgets.dropdown("GENERATE_PII_DATA", defaultValue="True", choices=["True", "False"])
@@ -30,7 +30,9 @@ schema = StructType([
   StructField("date_of_birth", DateType(), False),
   StructField("age", LongType(), False),
   StructField("address", StringType(), False),
-  StructField("ip_address", StringType(), False),
+  StructField("ipv4", StringType(), False),
+  StructField("ipv6", StringType(), False),
+  StructField("mac_address", StringType(), False),
   StructField("phone_number", StringType(), False),
   StructField("ssn", StringType(), False),
   StructField("iban", StringType(), False),
@@ -46,6 +48,8 @@ def get_customer_id(batch_iter: Iterator[pd.Series]) -> Iterator[pd.Series]:
         yield int(time.time()) + id
 
 def generate_fake_data(pdf: pd.DataFrame) -> pd.DataFrame:
+
+  # msisdn
   
   def generate_data(y):
       
@@ -58,11 +62,13 @@ def generate_fake_data(pdf: pd.DataFrame) -> pd.DataFrame:
     dob = fake.date_between(start_date='-99y', end_date='-18y')
 
     y["name"] = fake.name()
-    y["email"] = fake.email()
+    y["email"] = fake.ascii_free_email()
     y["date_of_birth"] = dob #.strftime("%Y-%m-%d")
     y["age"] = date.today().year - dob.year
     y["address"] = fake.address()
-    y["ip_address"] = fake.ipv4()
+    y["ipv4"] = fake.ipv4()
+    y["ipv6"] = fake.ipv6()
+    y["mac_address"] = fake.mac_address()
     y["phone_number"] = fake.phone_number()
     y["ssn"] = fake.ssn()
     y["iban"] = fake.iban()
@@ -89,12 +95,12 @@ if GENERATE_CLEAN_DATA:
  
   # Generate some "clean" data which doesn't contain PII and union them to our data which contains generated PII...
   raw_data = [
-    [10001, "John", "", date.today(), 1, "Strawberry Fields", "999.999.999.999", "1234", "Taxman", "", 1234, "Yesterday", "1", "There are places I'll remember all my life though some have changed"], 
-    [20001, "Paul", "", date.today(), 9, "Penny Lane", "1.1.1.01", "5678", "Money (That's What I Want)", "", 5678, "Eight Days a Week", "2", "And in the end the love you take is equal to the love you make"], 
-    [30001, "Ringo", "", date.today(), 6, "Abbey Road", "255.255.255.256", "Parlophone", "You Never Give Me Your Money", "", 1111, "Tomorrow Never Knows", "3", "How does it feel to be one of the beautiful people?"], 
-    [40001, "George", "", date.today(), 8, "Octopus's Garden", "0.1", "No Reply", "Back in the U.S.S.R.", "", 2222, "Timeless", "4", "Something in the way she moves..."]]
+    [10001, "John", "", date.today(), 1, "Strawberry Fields", "999.999.999.999", "w:@:l:r:u:5", "z:0:0:0:0:0", "1234", "Taxman", "", 1234, "Yesterday", "1", "There are places I'll remember all my life though some have changed"], 
+    [20001, "Paul", "", date.today(), 9, "Penny Lane", "1.1.1.01", "y:e:l:l:0:w", "x:0:0:0:0:0", "5678", "Money (That's What I Want)", "", 5678, "Eight Days a Week", "2", "And in the end the love you take is equal to the love you make"], 
+    [30001, "Ringo", "", date.today(), 6, "Abbey Road", "255.255.255.256", "x:y:z:1", "0:0:0:0:0:0", "Parlophone", "You Never Give Me Your Money", "", 1111, "Tomorrow Never Knows", "3", "How does it feel to be one of the beautiful people?"], 
+    [40001, "George", "", date.today(), 8, "Octopus's Garden", "0.1", "a:b:c:d:e:f:g:h", "a:b:c:d:e:f", "No Reply", "Back in the U.S.S.R.", "", 2222, "Timeless", "4", "Something in the way she moves..."]]
 
-  pdf = pd.DataFrame(raw_data, columns = ["customer_id", "name", "email", "date_of_birth", "age", "address", "ip_address", "phone_number", "ssn", "iban", "credit_card", "expiry_date", "security_code", "freetext"])
+  pdf = pd.DataFrame(raw_data, columns = ["customer_id", "name", "email", "date_of_birth", "age", "address", "ipv4", "ipv6", "mac_address", "phone_number", "ssn", "iban", "credit_card", "expiry_date", "security_code", "freetext"])
 
   clean_data = spark.createDataFrame(pdf) 
   
@@ -105,8 +111,8 @@ if GENERATE_CLEAN_DATA:
 
 # COMMAND ----------
 
-data.write.format("parquet").mode("append").save(OUTPUT_DIR) 
+data.write.format("parquet").mode("overwrite").save(OUTPUT_DIR) 
 
 # COMMAND ----------
 
-display(spark.read.parquet("dbfs:/dlt_pii/customer_raw"))
+display(spark.read.parquet(OUTPUT_DIR))
