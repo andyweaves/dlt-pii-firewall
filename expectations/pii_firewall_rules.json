@@ -43,7 +43,7 @@
         {
 			"name": "{} may contain ipv6", 
 			"constraint": "CAST({} AS STRING) NOT REGEXP('\\s*(?!.*::.*::)(?:(?!:)|:(?=:))(?:[0-9a-f]{0,4}(?:(?<=::)|(?<!::):)){6}(?:[0-9a-f]{0,4}(?:(?<=::)|(?<!::):)[0-9a-f]{0,4}(?:(?<=::)|(?<!:)|(?<=:)(?<!::):)|(?:25[0-4]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(?:\\.(?:25[0-4]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3})\\s*') AS result",
-			"action": "concat(substring_index({}, ':', 4), ':::') AS {}",
+			"action": "concat(substring_index({}, ':', 2), ':::::') AS {}",
 			"mode": "REDACT_AND_TAG",
             "tag": "{} may contain anonymised ipv6 address"
 		},
