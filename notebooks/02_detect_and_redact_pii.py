@@ -3,6 +3,7 @@ INPUT_PATH = spark.conf.get("INPUT_PATH")
 INPUT_FORMAT = spark.conf.get("INPUT_FORMAT")
 TABLE_PATH = spark.conf.get("TABLE_PATH")
 EXPECTATIONS_PATH = spark.conf.get("EXPECTATIONS_PATH")
+NUM_SAMPLE_ROWS = int(spark.conf.get("NUM_SAMPLE_ROWS"))
 
 # COMMAND ----------
 
@@ -62,7 +63,7 @@ constraints = dict(zip(expectations_and_actions.expectation, expectations_and_ac
 def get_select_expr(columns):
 
   # Drop duplicates because otherwise we'll need to handle duplicate columns in the downstream tables, which will get messy...
-  pdf = get_spark_read(INPUT_FORMAT, INPUT_PATH).withColumn("failed_expectations", F.array([F.expr(value) for key, value in constraints.items()])).withColumn("failed_expectations", get_failed_expectations("failed_expectations")).filter(F.size("failed_expectations") > 0).select(explode("failed_expectations").alias("expectation")).distinct().withColumn("failed_column", regexp_extract(col("expectation"), "\`(.*?)\`", 1)).toPandas().drop_duplicates(subset = ["failed_column"]).merge(expectations_and_actions, on="expectation")
+  pdf = get_spark_read(INPUT_FORMAT, INPUT_PATH).limit(NUM_SAMPLE_ROWS).withColumn("failed_expectations", F.array([F.expr(value) for key, value in constraints.items()])).withColumn("failed_expectations", get_failed_expectations("failed_expectations")).filter(F.size("failed_expectations") > 0).select(explode("failed_expectations").alias("expectation")).distinct().withColumn("failed_column", regexp_extract(col("expectation"), "\`(.*?)\`", 1)).toPandas().drop_duplicates(subset = ["failed_column"]).merge(expectations_and_actions, on="expectation")
   
   pii_detected = False
   

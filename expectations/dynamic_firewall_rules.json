@@ -8,12 +8,6 @@
             "tag": "{} may contain redacted creditcard"
 		},
 		{
-			"name": "{} may contain ssn", 
-			"constraint": "CAST({} AS STRING) NOT REGEXP('^\\\\d{3}-\\\\d{2}-\\\\d{4}$') AS result",
-			"action": "'[REDACTED]' AS {}",
-			"mode": "REDACT"
-		},
-		{
 			"name": "{} may contain expiry date", 
 			"constraint": "CAST({} AS STRING) NOT REGEXP('^\\\\d{2}/\\\\d{2}$') AS result",
 			"action": "regexp_replace({}, '^(0[1-9]|1[0-2])', 'XX') AS {}",
@@ -22,9 +16,16 @@
 		},
 		{
 			"name": "{} may contain security code", 
-			"constraint": "CAST({} AS STRING) NOT REGEXP('^\\\\d{3}$') AS result",
+			"constraint": "CAST({} AS STRING) NOT REGEXP('^\\d{3}$') AS result",
 			"action": "'XXX' AS {}",
 			"mode": "REDACT"
+		},
+        {
+			"name": "{} may contain iban", 
+			"constraint": "CAST({} AS STRING) NOT REGEXP('[a-zA-Z]{2}[0-9]{2}[a-zA-Z0-9]{4}[0-9]{7}([a-zA-Z0-9]?)+') AS result",
+			"action": "regexp_replace({}, '[a-zA-Z]{2}[0-9]{2}[a-zA-Z0-9]{4}[0-9]{7}([a-zA-Z0-9]?)+', concat(substr({}, 0, 2), 'XXXXXXXXXXXXXXXX', substr({}, -3, 3))) AS {}",
+			"mode": "REDACT_AND_TAG",
+            "tag": "{} may contain redacted iban" 
 		},
 		{
 			"name": "{} may contain email address", 
@@ -50,23 +51,22 @@
         {
           "name": "{} may contain mac address", 
 		  "constraint": "CAST({} AS STRING) NOT REGEXP('^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$') AS result",
-		  "action": "sha2({}, 256) AS {}",
+		  "action": "sha2(CAST({} AS STRING), 256) AS {}",
 		  "mode": "REDACT_AND_TAG",
           "tag": "{} may contain sha2 hashed mac address" 
         },
-		{
-			"name": "{} may contain iban", 
-			"constraint": "CAST({} AS STRING) NOT REGEXP('[a-zA-Z]{2}[0-9]{2}[a-zA-Z0-9]{4}[0-9]{7}([a-zA-Z0-9]?)+') AS result",
-			"action": "regexp_replace({}, '[a-zA-Z]{2}[0-9]{2}[a-zA-Z0-9]{4}[0-9]{7}([a-zA-Z0-9]?)+', concat(substr({}, 0, 2), 'XXXXXXXXXXXXXXXX', substr({}, -3, 3))) AS {}",
-			"mode": "REDACT_AND_TAG",
-            "tag": "{} may contain redacted iban" 
-		},
 		{
 			"name": "{} may contain us_address", 
 			"constraint": "CAST({} AS STRING) NOT REGEXP('^([0-9][0-9]{0,5})(.*?\\n)([A-Za-z]{2})(.*)([0-9]{5})$') AS result",
 			"action": "regexp_extract({}, '\\\\b[A-Z]{2}(?=\\\\s+\\\\d{5}$)', 0) AS {}",
 			"mode": "REDACT_AND_TAG",
             "tag": "{} may contain partially anonymised us address"
+		},
+        {
+			"name": "{} may contain ssn", 
+			"constraint": "CAST({} AS STRING) NOT REGEXP('^\\\\d{3}-\\\\d{2}-\\\\d{4}$') AS result",
+			"action": "'[REDACTED]' AS {}",
+			"mode": "REDACT"
 		},
 		{
 			"name": "{} may contain phone_number", 
