@@ -4,7 +4,7 @@ INPUT_FORMAT = spark.conf.get("INPUT_FORMAT")
 TABLE_PATH = spark.conf.get("TABLE_PATH")
 EXPECTATIONS_PATH = spark.conf.get("EXPECTATIONS_PATH")
 NUM_SAMPLE_ROWS = int(spark.conf.get("NUM_SAMPLE_ROWS"))
-UNION = bool(spark.conf.get("UNION"))
+UNION = spark.conf.get("UNION")
 
 # COMMAND ----------
 
@@ -147,7 +147,7 @@ def redacted(select_expr = select_expr):
 )
 def clean_processed():
   
-  if UNION:
+  if UNION == "True":
     return dlt.read("redacted").drop("failed_expectations").unionByName(spark.table("LIVE.clean"))
   else: 
     return dlt.read("redacted").drop("failed_expectations")
