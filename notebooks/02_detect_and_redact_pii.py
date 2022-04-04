@@ -4,19 +4,16 @@ INPUT_FORMAT = spark.conf.get("INPUT_FORMAT")
 TABLE_PATH = spark.conf.get("TABLE_PATH")
 EXPECTATIONS_PATH = spark.conf.get("EXPECTATIONS_PATH")
 NUM_SAMPLE_ROWS = int(spark.conf.get("NUM_SAMPLE_ROWS"))
+UNION = bool(spark.conf.get("UNION"))
 
 # COMMAND ----------
 
 def get_spark_read(input_format, input_path):
   
-  if input_format == "delta":
-    return spark.read(INPUT_PATH)
-  elif input_format == "parquet":
-    return spark.read.parquet(INPUT_PATH)
-  elif input_format == "json":
-    return spark.read.json(INPUT_PATH)
-  elif input_format == "csv":
-    return spark.read.csv(INPUT_PATH, header=True, inferSchema=True)
+  if input_format == "csv":
+    return spark.read.format(input_format).load(input_path, header=True, inferSchema=True)
+  else: 
+    return spark.read.format(input_format).load(input_path)
 
 # COMMAND ----------
 
@@ -150,4 +147,7 @@ def redacted(select_expr = select_expr):
 )
 def clean_processed():
   
-  return dlt.read("redacted").drop("failed_expectations").unionByName(spark.table("LIVE.clean"))
+  if UNION:
+    return dlt.read("redacted").drop("failed_expectations").unionByName(spark.table("LIVE.clean"))
+  else: 
+    return dlt.read("redacted").drop("failed_expectations")
