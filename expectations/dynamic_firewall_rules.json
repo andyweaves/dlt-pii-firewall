@@ -16,7 +16,7 @@
 		},
 		{
 			"name": "{} may contain security code", 
-			"constraint": "CAST({} AS STRING) NOT REGEXP('^\\d{3}$') AS result",
+			"constraint": "CAST({} AS STRING) NOT REGEXP('^\\\\d{3}$') AS result",
 			"action": "'XXX' AS {}",
 			"mode": "REDACT"
 		},

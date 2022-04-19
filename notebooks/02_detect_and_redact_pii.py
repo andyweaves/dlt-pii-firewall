@@ -147,7 +147,7 @@ def redacted(select_expr = select_expr):
 )
 def clean_processed():
   
-  if UNION == "True":
+  if UNION:
     return dlt.read("redacted").drop("failed_expectations").unionByName(spark.table("LIVE.clean"))
   else: 
     return dlt.read("redacted").drop("failed_expectations")
