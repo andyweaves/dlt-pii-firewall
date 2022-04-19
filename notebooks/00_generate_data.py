@@ -3,7 +3,7 @@
 
 # COMMAND ----------
 
-dbutils.widgets.dropdown("NUM_ROWS", defaultValue="1000", choices=["50", "100", "1000", "3000", "5000", "10000", "250000", "1000000", "5000000", "10000000"])
+dbutils.widgets.dropdown("NUM_ROWS", defaultValue="1000", choices=["50", "100", "1000", "3000", "5000", "10000", "250000", "500000", "1000000", "5000000", "10000000", "20000000"])
 dbutils.widgets.text("OUTPUT_DIR", defaultValue="dbfs:/dlt_pii/customer_raw")
 dbutils.widgets.dropdown("GENERATE_CLEAN_DATA", defaultValue="False", choices=["True", "False"])
 dbutils.widgets.dropdown("GENERATE_PII_DATA", defaultValue="True", choices=["True", "False"])
@@ -22,6 +22,7 @@ from pyspark.sql.types import *
 import time
 from datetime import date
 import random
+from faker import Faker
 
 schema = StructType([
   StructField("customer_id", LongType(), False),
@@ -42,22 +43,25 @@ schema = StructType([
   StructField("freetext", StringType(), False)
   ])
 
+fake = Faker('en_US')
+
+def get_random_pii():
+  return random.choice([fake.email(), fake.credit_card_number(), fake.ipv4()]) # , fake.ssn(), fake.iban(), fake.date_between(start_date='-90y', end_date='-18y')
+
 @pandas_udf("long")
 def get_customer_id(batch_iter: Iterator[pd.Series]) -> Iterator[pd.Series]:
-    for id in batch_iter:
-        yield int(time.time()) + id
+  for id in batch_iter:
+      yield int(time.time()) + id
 
 def generate_fake_data(pdf: pd.DataFrame) -> pd.DataFrame:
-
-  # msisdn
-  
+    
   def generate_data(y):
       
-    from faker import Faker
-    fake = Faker('en_US')
+    #from faker import Faker
+    #fake = Faker('en_US')
     
-    def get_random_pii():
-      return random.choice([fake.email(), fake.credit_card_number(), fake.ipv4()]) # , fake.ssn(), fake.iban(), fake.date_between(start_date='-90y', end_date='-18y')
+    #def get_random_pii():
+    #  return random.choice([fake.email(), fake.credit_card_number(), fake.ipv4()]) # , fake.ssn(), fake.iban(), fake.date_between(start_date='-90y', end_date='-18y')
     
     dob = fake.date_between(start_date='-99y', end_date='-18y')
 
@@ -83,7 +87,11 @@ def generate_fake_data(pdf: pd.DataFrame) -> pd.DataFrame:
 
 if GENERATE_PII_DATA:
 
-  pii_data = spark.range(1, NUM_ROWS + 1).withColumn("customer_id", get_customer_id(col("id"))).withColumn("partition_id", spark_partition_id()).groupBy("partition_id").applyInPandas(generate_fake_data, schema).orderBy(asc("customer_id"))
+  initial_data = spark.range(1, NUM_ROWS + 1).withColumn("customer_id", get_customer_id(col("id"))).repartition(100)
+  
+  initial_data.write.format("parquet").mode("overwrite").save(OUTPUT_DIR)
+  
+  pii_data = spark.read.parquet(OUTPUT_DIR).withColumn("partition_id", spark_partition_id()).groupBy("partition_id").applyInPandas(generate_fake_data, schema).orderBy(asc("customer_id"))
 
   data = pii_data
 
@@ -115,4 +123,13 @@ data.write.format("parquet").mode("overwrite").save(OUTPUT_DIR)
 
 # COMMAND ----------
 
-display(spark.read.parquet(OUTPUT_DIR))
+df = spark.read.parquet(OUTPUT_DIR)
+df.rdd.getNumPartitions()
+
+# COMMAND ----------
+
+df.count()
+
+# COMMAND ----------
+
+display(df)

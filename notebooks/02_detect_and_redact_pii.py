@@ -4,7 +4,7 @@ INPUT_FORMAT = spark.conf.get("INPUT_FORMAT")
 TABLE_PATH = spark.conf.get("TABLE_PATH")
 EXPECTATIONS_PATH = spark.conf.get("EXPECTATIONS_PATH")
 NUM_SAMPLE_ROWS = int(spark.conf.get("NUM_SAMPLE_ROWS"))
-UNION = spark.conf.get("UNION")
+UNION = eval(spark.conf.get("UNION"))
 
 # COMMAND ----------
 
