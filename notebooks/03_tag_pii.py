@@ -1,7 +1,7 @@
 # Databricks notebook source
 dbutils.widgets.text("DATABASE_NAME", "dlt_pii")
 dbutils.widgets.multiselect("TABLE_NAMES", defaultValue="redacted", choices=["clean", "clean_processed", "redacted"])
-dbutils.widgets.text("EXPECTATIONS_PATH", "/Workspace/Repos/andrew.weaver@databricks.com/dlt-pii-firewall/expectations/pii_detection.json")
+dbutils.widgets.text("EXPECTATIONS_PATH", "/Workspace/Repos/andrew.weaver@databricks.com/dlt-pii-firewall/expectations/dynamic_firewall_rules.json")
 
 DATABASE_NAME = dbutils.widgets.get("DATABASE_NAME")
 TABLE_NAMES = dbutils.widgets.get("TABLE_NAMES").split(",")
