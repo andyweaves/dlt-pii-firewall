@@ -5,6 +5,7 @@ TABLE_PATH = spark.conf.get("TABLE_PATH")
 EXPECTATIONS_PATH = spark.conf.get("EXPECTATIONS_PATH")
 NUM_SAMPLE_ROWS = int(spark.conf.get("NUM_SAMPLE_ROWS"))
 UNION = eval(spark.conf.get("UNION"))
+FILL_NULLS = eval(spark.conf.get("FILL_NULLS"))
 
 # COMMAND ----------
 
@@ -93,8 +94,14 @@ import dlt
   comment="Raw data that has not been scanned for PII"
 )
 def staging():
-  return (
-    get_spark_read(INPUT_FORMAT, INPUT_PATH)
+  
+  if FILL_NULLS:
+    return (
+      get_spark_read(INPUT_FORMAT, INPUT_PATH).na.fill("")
+  )
+  else:   
+    return (
+      get_spark_read(INPUT_FORMAT, INPUT_PATH)
   )
 
 # COMMAND ----------
