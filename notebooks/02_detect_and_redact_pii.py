@@ -9,12 +9,18 @@ FILL_NULLS = eval(spark.conf.get("FILL_NULLS"))
 
 # COMMAND ----------
 
-def get_spark_read(input_format, input_path):
+def get_spark_read(input_format, input_path, fill_nulls):
   
   if input_format == "csv":
-    return spark.read.format(input_format).load(input_path, header=True, inferSchema=True)
+    if fill_nulls:
+      return spark.read.format(input_format).load(input_path, header=True, inferSchema=True).na.fill("")
+    else:
+      return spark.read.format(input_format).load(input_path, header=True, inferSchema=True)
   else: 
-    return spark.read.format(input_format).load(input_path)
+    if fill_nulls:
+      return spark.read.format(input_format).load(input_path).na.fill("")
+    else: 
+      return spark.read.format(input_format).load(input_path)
 
 # COMMAND ----------
 
@@ -31,12 +37,12 @@ def get_expectations_and_actions(columns, expectations_path):
   for column in columns:
     for rule in raw_rules:
       expectations_and_actions = expectations_and_actions.append({"expectation": str(rule.get("name")).replace("{}", f"`{column}`"), "constraint": rule["constraint"].replace("{}", f"`{column}`"), "mode": rule["mode"], "action": str(rule.get("action")).replace("{}", f"`{column}`"), "tag": str(rule.get("tag")).replace("{}", f"`{column}`")}, ignore_index=True)
-      
+  
   return expectations_and_actions
 
 # COMMAND ----------
 
-columns = get_spark_read(INPUT_FORMAT, INPUT_PATH).columns
+columns = get_spark_read(INPUT_FORMAT, INPUT_PATH, False).columns
 expectations_and_actions = get_expectations_and_actions(columns, EXPECTATIONS_PATH)
 
 # When DLT fully supports Repos we'll be able to use this... 
@@ -61,13 +67,13 @@ constraints = dict(zip(expectations_and_actions.expectation, expectations_and_ac
 def get_select_expr(columns):
 
   # Drop duplicates because otherwise we'll need to handle duplicate columns in the downstream tables, which will get messy...
-  pdf = get_spark_read(INPUT_FORMAT, INPUT_PATH).limit(NUM_SAMPLE_ROWS).withColumn("failed_expectations", F.array([F.expr(value) for key, value in constraints.items()])).withColumn("failed_expectations", get_failed_expectations("failed_expectations")).filter(F.size("failed_expectations") > 0).select(explode("failed_expectations").alias("expectation")).distinct().withColumn("failed_column", regexp_extract(col("expectation"), "\`(.*?)\`", 1)).toPandas().drop_duplicates(subset = ["failed_column"]).merge(expectations_and_actions, on="expectation")
+  pdf = get_spark_read(INPUT_FORMAT, INPUT_PATH, FILL_NULLS).limit(NUM_SAMPLE_ROWS).withColumn("failed_expectations", F.array([F.expr(value) for key, value in constraints.items()])).withColumn("failed_expectations", get_failed_expectations("failed_expectations")).filter(F.size("failed_expectations") > 0).select(explode("failed_expectations").alias("expectation")).distinct().withColumn("failed_column", regexp_extract(col("expectation"), "\`(.*?)\`", 1)).toPandas().drop_duplicates(subset = ["failed_column"]).merge(expectations_and_actions, on="expectation")
   
   pii_detected = False
   
   if len(pdf) > 0:
     pii_detected = True
-    
+  
   # Todo - can this all be done with list comprehension? That would be more performant...  
   sql = [x for x in columns if x not in pdf["failed_column"].tolist()]
   
@@ -95,13 +101,8 @@ import dlt
 )
 def staging():
   
-  if FILL_NULLS:
     return (
-      get_spark_read(INPUT_FORMAT, INPUT_PATH).na.fill("")
-  )
-  else:   
-    return (
-      get_spark_read(INPUT_FORMAT, INPUT_PATH)
+      get_spark_read(INPUT_FORMAT, INPUT_PATH, FILL_NULLS)
   )
 
 # COMMAND ----------

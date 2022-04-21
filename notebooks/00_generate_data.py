@@ -46,7 +46,7 @@ schema = StructType([
 fake = Faker('en_US')
 
 def get_random_pii():
-  return random.choice([fake.email(), fake.credit_card_number(), fake.ipv4()]) # , fake.ssn(), fake.iban(), fake.date_between(start_date='-90y', end_date='-18y')
+  return random.choice([fake.ascii_free_email(), fake.ipv4(), fake.ipv6()])
 
 @pandas_udf("long")
 def get_customer_id(batch_iter: Iterator[pd.Series]) -> Iterator[pd.Series]:
@@ -56,12 +56,6 @@ def get_customer_id(batch_iter: Iterator[pd.Series]) -> Iterator[pd.Series]:
 def generate_fake_data(pdf: pd.DataFrame) -> pd.DataFrame:
     
   def generate_data(y):
-      
-    #from faker import Faker
-    #fake = Faker('en_US')
-    
-    #def get_random_pii():
-    #  return random.choice([fake.email(), fake.credit_card_number(), fake.ipv4()]) # , fake.ssn(), fake.iban(), fake.date_between(start_date='-90y', end_date='-18y')
     
     dob = fake.date_between(start_date='-99y', end_date='-18y')
 
