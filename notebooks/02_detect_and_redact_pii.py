@@ -4,7 +4,6 @@ INPUT_FORMAT = spark.conf.get("INPUT_FORMAT")
 TABLE_PATH = spark.conf.get("TABLE_PATH")
 EXPECTATIONS_PATH = spark.conf.get("EXPECTATIONS_PATH")
 NUM_SAMPLE_ROWS = int(spark.conf.get("NUM_SAMPLE_ROWS"))
-UNION = eval(spark.conf.get("UNION"))
 FILL_NULLS = eval(spark.conf.get("FILL_NULLS"))
 
 # COMMAND ----------
@@ -26,27 +25,36 @@ def get_spark_read(input_format, input_path, fill_nulls):
 
 import pandas as pd
 import json
+from pyspark.sql.types import StructType
 
-def get_expectations_and_actions(columns, expectations_path):
+def new_row(rule, column_name): 
+  
+  return {"expectation": str(rule.get("name")).replace("{}", column_name), "constraint": rule["constraint"].replace("{}", column_name), "mode": rule["mode"], "action": str(rule.get("action")).replace("{}", column_name), "tag": str(rule.get("tag")).replace("{}", column_name)}
+
+def get_expectations_and_actions(schema, expectations_path):
 
   expectations_and_actions = pd.DataFrame(columns=["expectation", "constraint", "mode", "action", "tag"])
 
   with open(expectations_path, 'r') as f:
     raw_rules = json.load(f)["expectations"]
-
-  for column in columns:
-    for rule in raw_rules:
-      expectations_and_actions = expectations_and_actions.append({"expectation": str(rule.get("name")).replace("{}", f"`{column}`"), "constraint": rule["constraint"].replace("{}", f"`{column}`"), "mode": rule["mode"], "action": str(rule.get("action")).replace("{}", f"`{column}`"), "tag": str(rule.get("tag")).replace("{}", f"`{column}`")}, ignore_index=True)
+    
+  for rule in raw_rules:
+    for col in schema:
+      if isinstance(col.dataType, StructType):
+        for nested in col.dataType:
+          row = new_row(rule, f"`{col.name}.{nested.name}`")
+      else:
+        row = new_row(rule, f"`{col.name}`")
+        
+      expectations_and_actions = expectations_and_actions.append(row, ignore_index=True)
   
   return expectations_and_actions
 
 # COMMAND ----------
 
-columns = get_spark_read(INPUT_FORMAT, INPUT_PATH, False).columns
-expectations_and_actions = get_expectations_and_actions(columns, EXPECTATIONS_PATH)
-
-# When DLT fully supports Repos we'll be able to use this... 
-#f"file:{os.path.dirname(os.getcwd())}/expectations/pii_detection.csv"
+columns = get_spark_read(INPUT_FORMAT, INPUT_PATH, FILL_NULLS).columns
+schema = get_spark_read(INPUT_FORMAT, INPUT_PATH, FILL_NULLS).schema
+expectations_and_actions = get_expectations_and_actions(schema, EXPECTATIONS_PATH)
 
 # COMMAND ----------
 
@@ -75,7 +83,7 @@ def get_select_expr(columns):
     pii_detected = True
   
   # Todo - can this all be done with list comprehension? That would be more performant...  
-  sql = [x for x in columns if x not in pdf["failed_column"].tolist()]
+  sql = [] #[x for x in columns if x not in pdf["failed_column"].tolist()]
   
   def generate_sql(row):
     if row["mode"] in ["REDACT", "REDACT_AND_TAG"]:
@@ -147,15 +155,18 @@ def redacted(select_expr = select_expr):
 
 # COMMAND ----------
 
+from pyspark.sql.utils import AnalysisException
+
 @dlt.table(
-  name="clean_processed",
+  name="output",
   comment="Data that has been scanned without any PII being found or where PII has been found and redacted based on a set of predefined rules",
-  path=f"{TABLE_PATH}/clean_processed/",
+  path=f"{TABLE_PATH}/output/",
   table_properties={"pii_scanned" : "True", "pii_found": str(pii_detected)}
 )
-def clean_processed():
+def output():
   
-  if UNION:
+  try:
     return dlt.read("redacted").drop("failed_expectations").unionByName(spark.table("LIVE.clean"))
-  else: 
+  except AnalysisException as e:
+    print(f"It has not been possible to union the tables due to mismatching schemas: {e}")
     return dlt.read("redacted").drop("failed_expectations")

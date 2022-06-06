@@ -17,8 +17,9 @@
 		{
 			"name": "{} may contain security code", 
 			"constraint": "CAST({} AS STRING) NOT REGEXP('^\\\\d{3}$') AS result",
-			"action": "'XXX' AS {}",
-			"mode": "REDACT"
+			"action": "base64(aes_encrypt({}, 'abcdefghijklmnop')) AS {}",
+			"mode": "REDACT_AND_TAG",
+            "tag": "{} may contain aes encrypted security code" 
 		},
         {
 			"name": "{} may contain iban", 
