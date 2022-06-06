@@ -83,7 +83,7 @@ def get_select_expr(columns):
     pii_detected = True
   
   # Todo - can this all be done with list comprehension? That would be more performant...  
-  sql = [] #[x for x in columns if x not in pdf["failed_column"].tolist()]
+  sql = [x for x in columns if x not in pdf["failed_column"].tolist()]
   
   def generate_sql(row):
     if row["mode"] in ["REDACT", "REDACT_AND_TAG"]:
