@@ -70,25 +70,25 @@ When everything is set up correctly, run the MT Job and you should see something
 
 ### 1. Multi-task Job Workflow to automatically detect, redact and tag PII:
 
-![image](https://user-images.githubusercontent.com/43955924/172698887-235ac182-47ba-4ca0-8abb-5e6db58b14e2.png)
+![image](https://user-images.githubusercontent.com/43955924/172706115-480d2f05-fdca-4d2c-bdd1-f67386edc6fe.png)
 
 ### 2. DLT pipeline to automatically detect and redact PII:
 
 The pipeline following a successful run (10M rows of data):
 
-![image](https://user-images.githubusercontent.com/43955924/172695249-5ff5d38e-eda5-43fc-98c8-d0c32b18b109.png)
+![image](https://user-images.githubusercontent.com/43955924/172705228-0a3e6da1-6775-4a91-b91c-c9a75fc7c435.png)
 
 The expectations evaluated against our sample data:
 
-![image](https://user-images.githubusercontent.com/43955924/172699498-6a02b84e-a020-4cf5-a4d2-43d94d480f1f.png")
+![image](https://user-images.githubusercontent.com/43955924/172705383-c6f28ee0-1c32-4d6c-9201-50ec8aaa9c87.png)
 
 ### 3. Example of the column level PII tagging applied:
 
-![image](https://user-images.githubusercontent.com/43955924/172699264-b9a42116-42ac-415f-b0fd-ecd49d80078b.png)
+![image](https://user-images.githubusercontent.com/43955924/172706693-e82515a1-ccad-4d3a-9f42-5c7178220c3f.png)
 
 ### 4. Example of the redacted output table:
 
-![image](https://user-images.githubusercontent.com/43955924/172699124-390e8b9b-d90f-419d-93da-8aac0bf3f29a.png)
+![image](https://user-images.githubusercontent.com/43955924/172708036-ef22d79b-2330-4ccb-b562-dcb4b25e499d.png)
 
 ## Firewall Rules
 
@@ -114,7 +114,7 @@ Every rule that you specify here will be applied against every column of your in
 ## Next Steps
 
 * A firewall is only as good as its rules - the regular expressions provided are done so on an as-is basis and without any guarantees. That said, I’d love to test them against more data, refine their accuracy and add new regexes for PII types which aren’t covered yet. If you’re interested in collaborating on this, I’d love to hear from you!
-* Regular expressions will only get us so far - firstly I’d like to dispel the myth that regular expressions are an outdated method of identifying PII. As I said, in my experience most of the enterprise platforms that I encounter in this field still rely on regexes for ~90% of their PII detection. That said, it’s important to acknowledge that this approach is not without its limitations. If you used the notebook provided to generate your input data you’ll notice that there are two fields that our detection has failed pretty miserably on:
+* In my experience most of the enterprise platforms that I encounter in this field still rely on regexes for ~90% of their PII detection. That said, it’s important to acknowledge that this approach is not without its limitations. If you used the notebook provided to generate your input data you’ll notice that there are two fields that our detection has failed pretty miserably on:
   * ```name``` - short of having a dictionary of every person’s name on the planet - in every language and every alphabet - detecting a person’s name via regex is pretty much an impossible job
   * ```freetext``` - the way that expectations works means that if an expectation fails that row will not be evaluated against further expectations. It’s similar to error handling - if that row has failed, we mark it as failed and move on. The complication of this is that for fields that may contain multiple instances of PII (such as freetext fields), only the first type of PII identified will be identified and redacted.
   * So what’s the answer here? I’d like to look at using more sophisticated approaches like Named Entity Recognition (NER) or Natural Language Processing (NLP) to improve the detection of specific PII types like names, addresses or businesses, and also to apply identification and redaction to the contents of an entire column at a time. Again, if you’re interested in collaborating on this, please let me know!
