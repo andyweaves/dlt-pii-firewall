@@ -2,7 +2,7 @@
 
 > :warning: **THIS PROJECT IS PROVIDED AS-IS WITHOUT ANY GUARANTEES**: we make no claims as to the accuracy of the PII detection provided here, and if you decide to use it, it's **YOUR RESPONSIBILITY** to ensure that the example regexes and detection/redaction/tagging meets your internal, legal or regulatory requirements.
 
-## Using [Delta Live Tables](https://databricks.com/discover/pages/getting-started-with-delta-live-tables) to detect and redact PII data
+## Using [Delta Live Tables](https://databricks.com/product/delta-live-tables) to detect and redact PII data
 
 ![image](https://user-images.githubusercontent.com/43955924/172695949-0823d4eb-fe81-4f3e-aaf3-f6987a8c7ea7.png)
 
@@ -36,7 +36,7 @@ To get this pipeline running on your environment, please use the following steps
    * They have been scanned for PII
    * That PII has either been found or not found
    * Where PII has been found, add a customisable comment to the column it was found in
-7. In order to get this to run straight after our DLT pipeline, we're going to create a multi task Job workflow (see the docs for [AWS](https://docs.databricks.com/data-engineering/jobs/index.html), [Azure](https://docs.microsoft.com/en-gb/azure/databricks/data-engineering/jobs/), [GCP](https://docs.gcp.databricks.com/data-engineering/jobs/index.html)). You'll need to select the notebook [03_tag_pii.py](notebooks/03_tag_pii.py) and pass in the following Parameters:
+7. In order to get this to run straight after our DLT pipeline, we're going to create a multi-task Job Workflow (see the docs for [AWS](https://docs.databricks.com/data-engineering/jobs/index.html), [Azure](https://docs.microsoft.com/en-gb/azure/databricks/data-engineering/jobs/), [GCP](https://docs.gcp.databricks.com/data-engineering/jobs/index.html)). You'll need to select the notebook [03_tag_pii.py](notebooks/03_tag_pii.py) and pass in the following Parameters:
    * ```DATABASE_NAME```: The database to apply tagging (via properties) to. Should match the ```Target``` entered above.
    * ```TABLE_NAMES```: The tables within the databse to apply tagging (via properties) to and column level comments to. The DLT pipeline creates 3 main tables: ```clean```, ```redacted``` and ```output``` you can apply tagging to 1, 2 or all 3 of these.
    * ```EXPECTATIONS_PATH```: The path to the [dynamic_firewall_rules.json](expectations/dynamic_firewall_rules.json) config file once you've checked out the Repo. This is the main configuration file used to customise the behaviour of the detection/redaction/tagging of data. See **Firewall Rules** below for more details.
@@ -68,7 +68,7 @@ The following monitoring tables are created by this pipeline:
 
 When everything is set up correctly, run the MT Job and you should see something like this...
 
-### 1. Multi-step job to automatically detect, redact and tag PII:
+### 1. Multi-task Job Workflow to automatically detect, redact and tag PII:
 
 ![image](https://user-images.githubusercontent.com/43955924/172698887-235ac182-47ba-4ca0-8abb-5e6db58b14e2.png)
 
