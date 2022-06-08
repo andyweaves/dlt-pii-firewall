@@ -76,7 +76,7 @@ When everything is set up correctly, run the MT Job and you should see something
 
 The pipeline following a successful run (10M rows of data):
 
-![image](https://user-images.githubusercontent.com/43955924/160136979-a16fc3c8-1fbe-4e0f-8660-24b4e8f52c0e.png)
+![image](https://user-images.githubusercontent.com/43955924/172695249-5ff5d38e-eda5-43fc-98c8-d0c32b18b109.png)
 
 The expectations evaluated against our sample data:
 
