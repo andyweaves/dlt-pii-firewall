@@ -52,7 +52,6 @@ def get_expectations_and_actions(schema, expectations_path):
 
 # COMMAND ----------
 
-columns = get_spark_read(INPUT_FORMAT, INPUT_PATH, FILL_NULLS).columns
 schema = get_spark_read(INPUT_FORMAT, INPUT_PATH, FILL_NULLS).schema
 expectations_and_actions = get_expectations_and_actions(schema, EXPECTATIONS_PATH)
 
@@ -97,7 +96,7 @@ def get_select_expr(columns):
 
 # COMMAND ----------
 
-select_expr, pii_detected = get_select_expr(columns)
+select_expr, pii_detected = get_select_expr(schema.fieldNames())
 
 # COMMAND ----------
 
