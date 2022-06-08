@@ -80,7 +80,9 @@ The pipeline following a successful run (10M rows of data):
 
 The expectations evaluated against our sample data:
 
-![image](https://user-images.githubusercontent.com/43955924/172699498-6a02b84e-a020-4cf5-a4d2-43d94d480f1f.png)
+<p align="center">
+  src="[https://www.python.org/python-.png](https://user-images.githubusercontent.com/43955924/172699498-6a02b84e-a020-4cf5-a4d2-43d94d480f1f.png)">
+</p>
 
 ### 3. Example of the column level PII tagging applied:
 
