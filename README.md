@@ -70,25 +70,25 @@ When everything is set up correctly, run the MT Job and you should see something
 
 ### 1. Multi-step job to automatically detect, redact and tag PII:
 
-![image](https://user-images.githubusercontent.com/43955924/160146555-376fd977-cd91-4cd7-919a-f6eaa84df73c.png)
+![image](https://user-images.githubusercontent.com/43955924/172698887-235ac182-47ba-4ca0-8abb-5e6db58b14e2.png)
 
 ### 2. DLT pipeline to automatically detect and redact PII:
 
-The pipeline following a successful run:
+The pipeline following a successful run (10M rows of data):
 
 ![image](https://user-images.githubusercontent.com/43955924/160136979-a16fc3c8-1fbe-4e0f-8660-24b4e8f52c0e.png)
 
 The expectations evaluated against our sample data:
 
-![image](https://user-images.githubusercontent.com/43955924/160137248-386e649e-d1a8-4c24-adeb-46bf734d7fad.png)
+![image](https://user-images.githubusercontent.com/43955924/172699498-6a02b84e-a020-4cf5-a4d2-43d94d480f1f.png)
 
 ### 3. Example of the column level PII tagging applied:
 
-![image](https://user-images.githubusercontent.com/43955924/160141168-07688e9e-b02c-4712-947f-3ddd79173942.png)
+![image](https://user-images.githubusercontent.com/43955924/172699264-b9a42116-42ac-415f-b0fd-ecd49d80078b.png)
 
 ### 4. Example of the redacted output table:
 
-![image](https://user-images.githubusercontent.com/43955924/160144577-84870f68-9460-45ed-b732-0865ac8cc63e.png)
+![image](https://user-images.githubusercontent.com/43955924/172699124-390e8b9b-d90f-419d-93da-8aac0bf3f29a.png)
 
 ## Firewall Rules
 
