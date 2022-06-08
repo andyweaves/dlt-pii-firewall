@@ -39,7 +39,7 @@ To get this pipeline running on your environment, please use the following steps
 7. In order to get this to run straight after our DLT pipeline, we're going to create a multi task Job workflow (see the docs for [AWS](https://docs.databricks.com/data-engineering/jobs/index.html), [Azure](https://docs.microsoft.com/en-gb/azure/databricks/data-engineering/jobs/), [GCP](https://docs.gcp.databricks.com/data-engineering/jobs/index.html)). You'll need to select the notebook [03_tag_pii.py](notebooks/03_tag_pii.py) and pass in the following Parameters:
    * ```DATABASE_NAME```: The database to apply tagging (via properties) to. Should match the ```Target``` entered above.
    * ```TABLE_NAMES```: The tables within the databse to apply tagging (via properties) to and column level comments to. The DLT pipeline creates 3 main tables: ```clean```, ```redacted``` and ```output``` you can apply tagging to 1, 2 or all 3 of these.
-   * ```EXPECTATIONS_PATH```: The path to the [pii_firewall_rules.json](expectations/pii_firewall_rules.json) config file once you've checked out the Repo. This is the main configuration file used to customise the behaviour of the detection/redaction/tagging of data. See **Firewall Rules** below for more details.
+   * ```EXPECTATIONS_PATH```: The path to the [dynamic_firewall_rules.json](expectations/dynamic_firewall_rules.json) config file once you've checked out the Repo. This is the main configuration file used to customise the behaviour of the detection/redaction/tagging of data. See **Firewall Rules** below for more details.
 
 ## Output Tables
 
@@ -92,7 +92,7 @@ The expectations evaluated against our sample data:
 
 ## Firewall Rules
 
-The [pii_firewall_rules.json](expectations/pii_firewall_rules.json) file is the main way that you can customise the behaviour of how the detection/redaction/tagging of data works. Within the file you'll notice a number of rules defined as follows:
+The [dynamic_firewall_rules.json](expectations/dynamic_firewall_rules.json) file is the main way that you can customise the behaviour of how the detection/redaction/tagging of data works. Within the file you'll notice a number of rules defined as follows:
 
 ```
 "name": "", 
