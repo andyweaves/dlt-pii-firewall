@@ -4,7 +4,7 @@
 
 ## Using [Delta Live Tables](https://databricks.com/discover/pages/getting-started-with-delta-live-tables) to detect and redact PII data
 
-![image](https://user-images.githubusercontent.com/43955924/172694861-cc1c742b-f2b3-4eac-b53c-d6466f6afed2.png)
+![image](https://user-images.githubusercontent.com/43955924/172695949-0823d4eb-fe81-4f3e-aaf3-f6987a8c7ea7.png)
 
 [Delta Live Tables](https://databricks.com/discover/pages/getting-started-with-delta-live-tables) makes it easy to build and manage reliable data pipelines that deliver high-quality data on Delta Lake.
 
@@ -53,7 +53,7 @@ The following data tables and views are created by this pipeline:
 | quarantine      | View  | View containing data that has failed expectations. May contain PII and therefore declared as a view (so that PII is not persisted after the pipeline has been run |
 | clean           | Table | Table containing data that has passed expectations and therefore is not expected to contain PII  |
 | redacted        | Table | Table containing data that has failed expectations and therefore is expected to contain PII but in which that PII has been redacted based on the specified actions |
-| clean_processed | Table | A union of clean and redacted, creating a table that contains either data that has passed expectations and therefore is not expected to contain PII or data that is expected to contain PII but has been redacted based on the specified actions |
+| output | Table | A union of clean and redacted, creating a table that contains either data that has passed expectations and therefore is not expected to contain PII or data that is expected to contain PII but has been redacted based on the specified actions |
 
 The following monitoring tables are created by this pipeline:
 
