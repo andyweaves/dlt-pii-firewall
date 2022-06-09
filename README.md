@@ -49,7 +49,7 @@ The following data tables and views are created by this pipeline:
 
 | Name            | Type  | Description         |
 | ------------    | ----  | -----------         |
-| staging         | View  | Initial view that data is load into. May contain PII and therefore declared as a view (so that PII is not persisted after the pipeline has been run |
+| staging         | View  | Initial view that data is loaded into. May contain PII and therefore declared as a view (so that PII is not persisted after the pipeline has been run |
 | quarantine      | View  | View containing data that has failed expectations. May contain PII and therefore declared as a view (so that PII is not persisted after the pipeline has been run |
 | clean           | Table | Table containing data that has passed expectations and therefore is not expected to contain PII  |
 | redacted        | Table | Table containing data that has failed expectations and therefore is expected to contain PII but in which that PII has been redacted based on the specified actions |
@@ -101,7 +101,7 @@ The [dynamic_firewall_rules.json](expectations/dynamic_firewall_rules.json) file
 "mode": "",
 "tag":""
 ```
-Every rule that you specify here will be applied against every column of your input data. To add new rules, just add a new JSON object as follows:
+Every rule that you specify here will be applied against every column of your input data. If those columns contain structs of nested data, it will flatten the first layer of those so that the expectations can be applied uniformly across all of the fields contained within them. To add new rules, just add a new JSON object as follows:
 
 | Element    | Is Mandatory | Can Contain | Description |
 |------------|-----------|---------|-------------|
