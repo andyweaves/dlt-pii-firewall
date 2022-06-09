@@ -82,6 +82,8 @@ def get_sql_expressions(schema, nested_columns):
 
   df = get_spark_read(INPUT_FORMAT, INPUT_PATH, FILL_NULLS).limit(NUM_SAMPLE_ROWS).selectExpr(select_sql)
   
+  new_columns = df.columns
+  
   # Drop duplicates because otherwise we'll need to handle duplicate columns in the downstream tables, which will get messy...
   pdf = df.withColumn("failed_expectations", F.array([F.expr(value) for key, value in constraints.items()])).withColumn("failed_expectations", get_failed_expectations("failed_expectations")).filter(F.size("failed_expectations") > 0).select(explode("failed_expectations").alias("expectation")).distinct().withColumn("failed_column", regexp_extract(col("expectation"), "\`(.*?)\`", 1)).toPandas().drop_duplicates(subset = ["failed_column"]).merge(expectations_and_actions, on="expectation")
   
@@ -91,7 +93,7 @@ def get_sql_expressions(schema, nested_columns):
     pii_detected = True
   
   # Todo - change to list comprehension. It's more performant...
-  redact_sql = [x for x in not_nested if x not in pdf["failed_column"].tolist()]
+  redact_sql = [col for col in new_columns if col not in pdf["failed_column"].tolist()]
   
   def generate_sql(row):
     if row["mode"] in ["REDACT", "REDACT_AND_TAG"]:
