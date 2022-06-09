@@ -29,31 +29,34 @@ from pyspark.sql.types import StructType
 
 def new_row(rule, column_name): 
   
-  return {"expectation": str(rule.get("name")).replace("{}", column_name), "constraint": rule["constraint"].replace("{}", column_name), "mode": rule["mode"], "action": str(rule.get("action")).replace("{}", column_name), "tag": str(rule.get("tag")).replace("{}", column_name)}
+  return {"expectation": str(rule.get("name")).replace("{}", f"`{column_name}`"), "constraint": rule["constraint"].replace("{}",  f"`{column_name}`"), "mode": rule["mode"], "action": str(rule.get("action")).replace("{}", f"`{column_name}`"), "tag": str(rule.get("tag")).replace("{}", f"`{column_name}`")}
 
 def get_expectations_and_actions(schema, expectations_path):
 
-  expectations_and_actions = pd.DataFrame(columns=["expectation", "constraint", "mode", "action", "tag"])
+  expectations_and_actions = [] 
 
   with open(expectations_path, 'r') as f:
     raw_rules = json.load(f)["expectations"]
+    
+  nested_columns = set(())
     
   for rule in raw_rules:
     for col in schema:
       if isinstance(col.dataType, StructType):
         for nested in col.dataType:
-          row = new_row(rule, f"`{col.name}.{nested.name}`")
+          row = new_row(rule, f"{nested.name}")
+          nested_columns.add(col.name)
       else:
-        row = new_row(rule, f"`{col.name}`")
-        
-      expectations_and_actions = expectations_and_actions.append(row, ignore_index=True)
+        row = new_row(rule, f"{col.name}")
+      
+      expectations_and_actions.append(row)
   
-  return expectations_and_actions
+  return pd.DataFrame(expectations_and_actions, columns=["expectation", "constraint", "mode", "action", "tag"]), nested_columns
 
 # COMMAND ----------
 
 schema = get_spark_read(INPUT_FORMAT, INPUT_PATH, FILL_NULLS).schema
-expectations_and_actions = get_expectations_and_actions(schema, EXPECTATIONS_PATH)
+expectations_and_actions, nested_columns = get_expectations_and_actions(schema, EXPECTATIONS_PATH)
 
 # COMMAND ----------
 
@@ -71,32 +74,38 @@ import pyspark.sql.functions as F
 
 constraints = dict(zip(expectations_and_actions.expectation, expectations_and_actions.constraint))
 
-def get_select_expr(columns):
+def get_sql_expressions(schema, nested_columns):
+  
+  all_columns = schema.fieldNames()
+  not_nested = [col for col in all_columns if col not in nested_columns]
+  select_sql = not_nested + list({f"{col}.*" for col in nested_columns})
 
+  df = get_spark_read(INPUT_FORMAT, INPUT_PATH, FILL_NULLS).limit(NUM_SAMPLE_ROWS).selectExpr(select_sql)
+  
   # Drop duplicates because otherwise we'll need to handle duplicate columns in the downstream tables, which will get messy...
-  pdf = get_spark_read(INPUT_FORMAT, INPUT_PATH, FILL_NULLS).limit(NUM_SAMPLE_ROWS).withColumn("failed_expectations", F.array([F.expr(value) for key, value in constraints.items()])).withColumn("failed_expectations", get_failed_expectations("failed_expectations")).filter(F.size("failed_expectations") > 0).select(explode("failed_expectations").alias("expectation")).distinct().withColumn("failed_column", regexp_extract(col("expectation"), "\`(.*?)\`", 1)).toPandas().drop_duplicates(subset = ["failed_column"]).merge(expectations_and_actions, on="expectation")
+  pdf = df.withColumn("failed_expectations", F.array([F.expr(value) for key, value in constraints.items()])).withColumn("failed_expectations", get_failed_expectations("failed_expectations")).filter(F.size("failed_expectations") > 0).select(explode("failed_expectations").alias("expectation")).distinct().withColumn("failed_column", regexp_extract(col("expectation"), "\`(.*?)\`", 1)).toPandas().drop_duplicates(subset = ["failed_column"]).merge(expectations_and_actions, on="expectation")
   
   pii_detected = False
   
   if len(pdf) > 0:
     pii_detected = True
   
-  # Todo - can this all be done with list comprehension? That would be more performant...  
-  sql = [x for x in columns if x not in pdf["failed_column"].tolist()]
+  # Todo - change to list comprehension. It's more performant...
+  redact_sql = [x for x in not_nested if x not in pdf["failed_column"].tolist()]
   
   def generate_sql(row):
     if row["mode"] in ["REDACT", "REDACT_AND_TAG"]:
-      sql.append(row["action"])
+      redact_sql.append(row["action"])
     elif row["mode"] == "TAG":
-      sql.append(row["failed_column"])  
+      redact_sql.append(row["failed_column"])  
 
   pdf.apply(generate_sql, axis=1)
     
-  return sql, pii_detected
+  return select_sql, redact_sql, pii_detected
 
 # COMMAND ----------
 
-select_expr, pii_detected = get_select_expr(schema.fieldNames())
+select_sql, redact_sql, pii_detected = get_sql_expressions(schema, nested_columns)
 
 # COMMAND ----------
 
@@ -109,7 +118,7 @@ import dlt
 def staging():
   
     return (
-      get_spark_read(INPUT_FORMAT, INPUT_PATH, FILL_NULLS)
+      get_spark_read(INPUT_FORMAT, INPUT_PATH, FILL_NULLS).selectExpr(select_sql)
   )
 
 # COMMAND ----------
@@ -148,9 +157,9 @@ def quarantine():
   path=f"{TABLE_PATH}/redacted/",
   table_properties={"pii_scanned" : "True", "pii_found": str(pii_detected)}
 )
-def redacted(select_expr = select_expr):
+def redacted(redact_sql = redact_sql):
   
-  return dlt.read("quarantine").selectExpr(select_expr + ["failed_expectations"])
+  return dlt.read("quarantine").selectExpr(redact_sql + ["failed_expectations"])
 
 # COMMAND ----------
 
@@ -167,5 +176,5 @@ def output():
   try:
     return dlt.read("redacted").drop("failed_expectations").unionByName(spark.table("LIVE.clean"))
   except AnalysisException as e:
-    print(f"It has not been possible to union the tables due to mismatching schemas: {e}")
+    print(f"Caught exception due to mismatching schemas. Exception:\n{e}")
     return dlt.read("redacted").drop("failed_expectations")

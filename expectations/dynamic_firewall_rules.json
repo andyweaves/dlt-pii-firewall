@@ -17,7 +17,7 @@
 		{
 			"name": "{} may contain security code", 
 			"constraint": "CAST({} AS STRING) NOT REGEXP('^\\\\d{3}$') AS result",
-			"action": "base64(aes_encrypt({}, 'abcdefghijklmnop')) AS {}",
+			"action": "base64(aes_encrypt(CAST({} AS STRING), 'abcdefghijklmnop')) AS {}",
 			"mode": "REDACT_AND_TAG",
             "tag": "{} may contain aes encrypted security code" 
 		},
@@ -67,7 +67,7 @@
 			"name": "{} may contain ssn", 
 			"constraint": "CAST({} AS STRING) NOT REGEXP('^\\\\d{3}-\\\\d{2}-\\\\d{4}$') AS result",
 			"action": "'[REDACTED]' AS {}",
-			"mode": "REDACT"
+			"mode": "REDACT_AND_TAG"
 		},
 		{
 			"name": "{} may contain phone_number", 

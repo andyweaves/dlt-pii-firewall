@@ -11,24 +11,38 @@ EXPECTATIONS_PATH = dbutils.widgets.get("EXPECTATIONS_PATH")
 
 import pandas as pd
 import json
+from pyspark.sql.types import StructType
 
-def get_expectations_and_actions(columns, expectations_path):
+def new_row(rule, column_name): 
+  
+  return {"expectation": str(rule.get("name")).replace("{}", f"`{column_name}`"), "constraint": rule["constraint"].replace("{}",  f"`{column_name}`"), "mode": rule["mode"], "action": str(rule.get("action")).replace("{}", f"`{column_name}`"), "tag": str(rule.get("tag")).replace("{}", f"`{column_name}`")}
 
-  expectations_and_actions = pd.DataFrame(columns=["expectation", "constraint", "mode", "action", "tag"])
+def get_expectations_and_actions(schema, expectations_path):
+
+  expectations_and_actions = [] 
 
   with open(expectations_path, 'r') as f:
     raw_rules = json.load(f)["expectations"]
-
-  for column in columns:
-    for rule in raw_rules:
-      expectations_and_actions = expectations_and_actions.append({"expectation": str(rule.get("name")).replace("{}", f"`{column}`"), "constraint": rule["constraint"].replace("{}", f"`{column}`"), "mode": rule["mode"], "action": str(rule.get("action")).replace("{}", f"`{column}`"), "tag": str(rule.get("tag")).replace("{}", f"`{column}`")}, ignore_index=True)
+    
+  nested_columns = set(())
+    
+  for rule in raw_rules:
+    for col in schema:
+      if isinstance(col.dataType, StructType):
+        for nested in col.dataType:
+          row = new_row(rule, f"{nested.name}") 
+          nested_columns.add(col.name)
+      else:
+        row = new_row(rule, f"{col.name}")
       
-  return expectations_and_actions
+      expectations_and_actions.append(row)
+  
+  return pd.DataFrame(expectations_and_actions, columns=["expectation", "constraint", "mode", "action", "tag"]), nested_columns
 
 # COMMAND ----------
 
-columns = spark.table(f"{DATABASE_NAME}.redacted").columns
-expectations_and_actions = get_expectations_and_actions(columns, EXPECTATIONS_PATH)
+schema = spark.table(f"{DATABASE_NAME}.redacted").schema
+expectations_and_actions, nested_columns = get_expectations_and_actions(schema, EXPECTATIONS_PATH)
 
 # COMMAND ----------
 
