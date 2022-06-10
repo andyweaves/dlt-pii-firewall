@@ -30,12 +30,12 @@ def get_expectations_and_actions(schema, expectations_path):
     for col in schema:
       if isinstance(col.dataType, StructType):
         for nested in col.dataType:
-          row = new_row(rule, f"{nested.name}") 
+          row = new_row(rule, f"{nested.name}")
           nested_columns.add(col.name)
+          expectations_and_actions.append(row)
       else:
         row = new_row(rule, f"{col.name}")
-      
-      expectations_and_actions.append(row)
+        expectations_and_actions.append(row)
   
   return pd.DataFrame(expectations_and_actions, columns=["expectation", "constraint", "mode", "action", "tag"]), nested_columns
 
