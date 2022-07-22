@@ -23,6 +23,8 @@ import time
 from datetime import date
 import random
 from faker import Faker
+from mimesis import Generic
+from mimesis.locales import Locale
 
 schema = StructType([
   StructField("customer_id", LongType(), False),
@@ -44,6 +46,7 @@ schema = StructType([
   ])
 
 fake = Faker('en_US')
+generic = Generic(locale=Locale.EN)
 
 def get_random_pii():
   return random.choice([fake.ascii_free_email(), fake.ipv4(), fake.ipv6()])
@@ -52,6 +55,25 @@ def get_random_pii():
 def get_customer_id(batch_iter: Iterator[pd.Series]) -> Iterator[pd.Series]:
   for id in batch_iter:
       yield int(time.time()) + id
+      
+nested = StructType([
+    StructField("email_address", StringType(), False),
+    StructField("ipv4_private", StringType(), False),
+    StructField("ip_address_v6", StringType(), False),
+    StructField("ipv4_with_port", StringType(), False),
+    StructField("mac", StringType(), False),
+    StructField("imei", StringType(), False),
+    StructField("credit_card_number", StringType(), False), 
+    StructField("credit_card_expiration_date", StringType(), False), 
+    StructField("cvv", StringType(), False), 
+    StructField("paypal", StringType(), False), 
+    StructField("random_text_with_ipv4", StringType(), False)
+])
+
+def nested_pii():
+  return (generic.person.email(), fake.ipv4_private(), fake.ipv6(), generic.internet.ip_v4_with_port(), generic.internet.mac_address(), generic.code.imei(), generic.payment.credit_card_number(), generic.payment.credit_card_expiration_date(), generic.payment.cvv(), generic.payment.paypal(), f"{fake.catch_phrase()} {generic.person.email()}")
+
+nested_pii_udf = udf(nested_pii, nested)
 
 def generate_fake_data(pdf: pd.DataFrame) -> pd.DataFrame:
     
@@ -85,11 +107,13 @@ if GENERATE_PII_DATA:
   
   initial_data.write.format("parquet").mode("overwrite").save(OUTPUT_DIR)
   
-  pii_data = spark.read.parquet(OUTPUT_DIR).withColumn("partition_id", spark_partition_id()).groupBy("partition_id").applyInPandas(generate_fake_data, schema).orderBy(asc("customer_id"))
+  pii_data = spark.read.parquet(OUTPUT_DIR).withColumn("partition_id", spark_partition_id()).groupBy("partition_id").applyInPandas(generate_fake_data, schema).withColumn("nested_pii", nested_pii_udf()).orderBy(asc("customer_id"))
 
   data = pii_data
 
 # COMMAND ----------
+
+from pyspark.sql.functions import struct, lit
 
 import pandas as pd
 
@@ -104,7 +128,20 @@ if GENERATE_CLEAN_DATA:
 
   pdf = pd.DataFrame(raw_data, columns = ["customer_id", "name", "email", "date_of_birth", "age", "address", "ipv4", "ipv6", "mac_address", "phone_number", "ssn", "iban", "credit_card", "expiry_date", "security_code", "freetext"])
 
-  clean_data = spark.createDataFrame(pdf) 
+  clean_data = (spark.createDataFrame(pdf).withColumn("nested_pii", 
+                  struct([
+                  lit("x").alias("email_address"), 
+                  lit("999.999.999.999").alias("ipv4_private"),
+                  lit("w:@:l:r:u:5").alias("ip_address_v6"),
+                  lit("1.1.1.01:22").alias("ipv4_with_port"),
+                  lit("a:b:c:d:e:f").alias("mac"),
+                  lit("1966").alias("imei"),
+                  lit("1234").alias("credit_card_number"),
+                  lit("1970").alias("credit_card_expiration_date"),
+                  lit("1s").alias("cvv"),
+                  lit("I get by with a little help").alias("paypal"),
+                  lit("Na na na na, Hey Jude...").alias("random_text_with_ipv4")
+                  ])))
   
   if GENERATE_PII_DATA:
     data = pii_data.union(clean_data)    
