@@ -56,7 +56,7 @@ def get_customer_id(batch_iter: Iterator[pd.Series]) -> Iterator[pd.Series]:
   for id in batch_iter:
       yield int(time.time()) + id
       
-nested = StructType([
+pii_struct_schema = StructType([
     StructField("email_address", StringType(), False),
     StructField("ipv4_private", StringType(), False),
     StructField("ip_address_v6", StringType(), False),
@@ -67,13 +67,14 @@ nested = StructType([
     StructField("credit_card_expiration_date", StringType(), False), 
     StructField("cvv", StringType(), False), 
     StructField("paypal", StringType(), False), 
+    StructField("random_text_with_email", StringType(), False),
     StructField("random_text_with_ipv4", StringType(), False)
 ])
 
-def nested_pii():
-  return (generic.person.email(), fake.ipv4_private(), fake.ipv6(), generic.internet.ip_v4_with_port(), generic.internet.mac_address(), generic.code.imei(), generic.payment.credit_card_number(), generic.payment.credit_card_expiration_date(), generic.payment.cvv(), generic.payment.paypal(), f"{fake.catch_phrase()} {generic.person.email()}")
+def pii_struct():
+  return (generic.person.email(), fake.ipv4_private(), fake.ipv6(), generic.internet.ip_v4_with_port(), generic.internet.mac_address(), generic.code.imei(), generic.payment.credit_card_number(), generic.payment.credit_card_expiration_date(), generic.payment.cvv(), generic.payment.paypal(), f"{fake.catch_phrase()} {generic.person.email()}", f"{fake.catch_phrase()} {fake.ipv4_public()}")
 
-nested_pii_udf = udf(nested_pii, nested)
+pii_struct_udf = udf(pii_struct, pii_struct_schema)
 
 def generate_fake_data(pdf: pd.DataFrame) -> pd.DataFrame:
     
@@ -107,7 +108,14 @@ if GENERATE_PII_DATA:
   
   initial_data.write.format("parquet").mode("overwrite").save(OUTPUT_DIR)
   
-  pii_data = spark.read.parquet(OUTPUT_DIR).withColumn("partition_id", spark_partition_id()).groupBy("partition_id").applyInPandas(generate_fake_data, schema).withColumn("nested_pii", nested_pii_udf()).orderBy(asc("customer_id"))
+  pii_data = (spark.read.parquet(OUTPUT_DIR)
+              .withColumn("partition_id", spark_partition_id())
+              .groupBy("partition_id")
+              .applyInPandas(generate_fake_data, schema)
+              .withColumn("pii_struct", pii_struct_udf())
+              .withColumn("pii_map", create_map(lit("email_address"), col("email"), lit("ip_address"), col("ipv4"), lit("home_address"), col("address")))
+              .withColumn("pii_array", array("email", "ipv4", "ipv6"))
+              .orderBy(asc("customer_id")))
 
   data = pii_data
 
@@ -128,20 +136,25 @@ if GENERATE_CLEAN_DATA:
 
   pdf = pd.DataFrame(raw_data, columns = ["customer_id", "name", "email", "date_of_birth", "age", "address", "ipv4", "ipv6", "mac_address", "phone_number", "ssn", "iban", "credit_card", "expiry_date", "security_code", "freetext"])
 
-  clean_data = (spark.createDataFrame(pdf).withColumn("nested_pii", 
+  clean_data = (spark.createDataFrame(pdf)
+                .withColumn("nested_pii", 
                   struct([
-                  lit("x").alias("email_address"), 
+                  lit("There are places I'll remember, all my life...").alias("email_address"), 
                   lit("999.999.999.999").alias("ipv4_private"),
                   lit("w:@:l:r:u:5").alias("ip_address_v6"),
-                  lit("1.1.1.01:22").alias("ipv4_with_port"),
+                  lit("1.1:22").alias("ipv4_with_port"),
                   lit("a:b:c:d:e:f").alias("mac"),
                   lit("1966").alias("imei"),
                   lit("1234").alias("credit_card_number"),
                   lit("1970").alias("credit_card_expiration_date"),
                   lit("1s").alias("cvv"),
                   lit("I get by with a little help").alias("paypal"),
-                  lit("Na na na na, Hey Jude...").alias("random_text_with_ipv4")
-                  ])))
+                  lit("I saw a film today, oh boy...").alias("random_text_with_email"),
+                  lit("All you need is love 0.0.0.1").alias("random_text_with_ipv4")
+                  ]))
+               .withColumn("pii_map", create_map(lit("email_address"), col("email"), lit("ip_address"), col("ipv4"), lit("home_address"), col("address")))
+               .withColumn("pii_array", array("email", "ipv4", "ipv6"))
+               )
   
   if GENERATE_PII_DATA:
     data = pii_data.union(clean_data)    
@@ -163,4 +176,9 @@ df.count()
 
 # COMMAND ----------
 
+display(df)
+
+# COMMAND ----------
+
+df = sql("SELECT * FROM dlt_pii.output").selectExpr("name", "CAST(name AS STRING) NOT REGEXP('////^[a-zA-ZàáâäãåąčćęèéêëėįìíîïłńòóôöõøùúûüųūÿýżźñçčšžÀÁÂÄÃÅĄĆČĖĘÈÉÊËÌÍÎÏĮŁŃÒÓÔÖÕØÙÚÛÜŲŪŸÝŻŹÑßÇŒÆČŠŽ∂ð ,.-]+$////u') AS result")
 display(df)
