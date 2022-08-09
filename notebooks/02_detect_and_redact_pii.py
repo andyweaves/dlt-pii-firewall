@@ -18,7 +18,7 @@ def get_spark_read(input_format, input_path):
 
 import pandas as pd
 import json
-from pyspark.sql.types import StructType
+from pyspark.sql.types import StructType, MapType
 
 def new_row(rule, column_name): 
   

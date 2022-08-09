@@ -129,10 +129,10 @@ if GENERATE_CLEAN_DATA:
  
   # Generate some "clean" data which doesn't contain PII and union them to our data which contains generated PII...
   raw_data = [
-    [10001, "John", "", date.today(), 1, "Strawberry Fields", "999.999.999.999", "w:@:l:r:u:5", "z:0:0:0:0:0", "1234", "Taxman", "", 1234, "Yesterday", "1", "There are places I'll remember all my life though some have changed"], 
-    [20001, "Paul", "", date.today(), 9, "Penny Lane", "1.1.1.01", "y:e:l:l:0:w", "x:0:0:0:0:0", "5678", "Money (That's What I Want)", "", 5678, "Eight Days a Week", "2", "And in the end the love you take is equal to the love you make"], 
-    [30001, "Ringo", "", date.today(), 6, "Abbey Road", "255.255.255.256", "x:y:z:1", "0:0:0:0:0:0", "Parlophone", "You Never Give Me Your Money", "", 1111, "Tomorrow Never Knows", "3", "How does it feel to be one of the beautiful people?"], 
-    [40001, "George", "", date.today(), 8, "Octopus's Garden", "0.1", "a:b:c:d:e:f:g:h", "a:b:c:d:e:f", "No Reply", "Back in the U.S.S.R.", "", 2222, "Timeless", "4", "Something in the way she moves..."]]
+    [10001, "John L3nn0n", "", date.today(), 1, "1 Strawberry Fields", "999.999.999.999", "w:@:l:r:u:5", "z:0:0:0:0:0", "1234", "Taxman (1966)", "", 1234, "Y3st3rday", "1", "There are places I'll remember all my life though some have changed"], 
+    [20001, "Paul McCartn3y", "", date.today(), 9, "2 Penny Lane", "1.1.1", "y:e:l:l:0:w", "x:0:0:0:0:0", "5678", "Money (That's What I Want)", "", 5678, "E1ght Days a W33k", "2", "And in the end the love you take is equal to the love you make"], 
+    [30001, "R1ngo Starr", "", date.today(), 6, "3 Abbey Road", "255.255", "x:y:z:1", "0:0:0:0:0:0", "Parlophone 4", "You Never Give Me Your M0ney", "", 1111, "T0m0rr0w N3v3r Kn0ws", "3", "How does it feel to be one of the beautiful people?"], 
+    [40001, "George Harr1s0n", "", date.today(), 8, "4 Octopus's Garden", "0.1", "a:b:c:d:e:f:g:h", "a:b:c:d:e:f", "No Reply 4", "Back in the U.S.S.R. b0y", "", 2222, "Tim3l3ss", "4", "Something in the way she moves..."]]
 
   pdf = pd.DataFrame(raw_data, columns = ["customer_id", "name", "email", "date_of_birth", "age", "address", "ipv4", "ipv6", "mac_address", "phone_number", "ssn", "iban", "credit_card", "expiry_date", "security_code", "freetext"])
 
@@ -148,9 +148,9 @@ if GENERATE_CLEAN_DATA:
                   lit("1234").alias("credit_card_number"),
                   lit("1970").alias("credit_card_expiration_date"),
                   lit("1s").alias("cvv"),
-                  lit("I get by with a little help").alias("paypal"),
-                  lit("I saw a film today, oh boy...").alias("random_text_with_email"),
-                  lit("All you need is love 0.0.0.1").alias("random_text_with_ipv4")
+                  lit("There are places I'll remember all my life though some have changed. Some forever, not for better... some have gone and some remain. All these places have their moments, with lovers and friends I still can recall. Some are dead and some are living... In my life I've loved them all").alias("paypal"),
+                  lit("I saw a film today, oh boy... about a lucky man that made the grade. A crowd of people stood and stared... they'd seen his face before, nobody-was-really-sure-if-he-was-from-the-house-of-lords....").alias("random_text_with_email"),
+                  lit("All you need is love 1.1.1").alias("random_text_with_ipv4")
                   ]))
                .withColumn("pii_map", create_map(lit("email_address"), col("email"), lit("ip_address"), col("ipv4"), lit("home_address"), col("address")))
                .withColumn("pii_array", array("email", "ipv4", "ipv6"))
@@ -168,7 +168,6 @@ data.write.format("parquet").mode("overwrite").save(OUTPUT_DIR)
 # COMMAND ----------
 
 df = spark.read.parquet(OUTPUT_DIR)
-df.rdd.getNumPartitions()
 
 # COMMAND ----------
 
@@ -176,9 +175,4 @@ df.count()
 
 # COMMAND ----------
 
-display(df)
-
-# COMMAND ----------
-
-df = sql("SELECT * FROM dlt_pii.output").selectExpr("name", "CAST(name AS STRING) NOT REGEXP('////^[a-zA-ZàáâäãåąčćęèéêëėįìíîïłńòóôöõøùúûüųūÿýżźñçčšžÀÁÂÄÃÅĄĆČĖĘÈÉÊËÌÍÎÏĮŁŃÒÓÔÖÕØÙÚÛÜŲŪŸÝŻŹÑßÇŒÆČŠŽ∂ð ,.-]+$////u') AS result")
 display(df)
