@@ -113,7 +113,7 @@ if GENERATE_PII_DATA:
               .groupBy("partition_id")
               .applyInPandas(generate_fake_data, schema)
               .withColumn("pii_struct", pii_struct_udf())
-              .withColumn("pii_map", create_map(lit("email_address"), col("email"), lit("ip_address"), col("ipv4"), lit("home_address"), col("address")))
+              .withColumn("pii_map", create_map(lit("email_addr"), col("email"), lit("ip_address"), col("ipv4"), lit("home_address"), col("address")))
               .withColumn("pii_array", array("email", "ipv4", "ipv6"))
               .orderBy(asc("customer_id")))
 
@@ -152,7 +152,7 @@ if GENERATE_CLEAN_DATA:
                   lit("I saw a film today, oh boy... about a lucky man that made the grade. A crowd of people stood and stared... they'd seen his face before, nobody-was-really-sure-if-he-was-from-the-house-of-lords....").alias("random_text_with_email"),
                   lit("All you need is love 1.1.1").alias("random_text_with_ipv4")
                   ]))
-               .withColumn("pii_map", create_map(lit("email_address"), col("email"), lit("ip_address"), col("ipv4"), lit("home_address"), col("address")))
+               .withColumn("pii_map", create_map(lit("email_addr"), col("email"), lit("ip_address"), col("ipv4"), lit("home_address"), col("address")))
                .withColumn("pii_array", array("email", "ipv4", "ipv6"))
                )
   

@@ -18,20 +18,23 @@ def get_spark_read(input_format, input_path):
 
 import pandas as pd
 import json
-from pyspark.sql.types import StructType, MapType
+from pyspark.sql.types import StructType, MapType, ArrayType
+from pyspark.sql.functions import explode
 
 def new_row(rule, column_name): 
   
   return {"expectation": str(rule.get("name")).replace("{}", f"`{column_name}`"), "constraint": rule["constraint"].replace("{}",  f"`{column_name}`"), "mode": rule["mode"], "action": str(rule.get("action")).replace("{}", f"`{column_name}`"), "tag": str(rule.get("tag")).replace("{}", f"`{column_name}`")}
 
-def get_expectations_and_actions(schema, expectations_path):
-
+def get_expectations_and_actions(df, columns, expectations_path):
+  
+  schema = df.schema
   expectations_and_actions = [] 
 
   with open(expectations_path, 'r') as f:
     raw_rules = json.load(f)["expectations"]
     
   nested_columns = set(())
+  columns = set(columns)
     
   for rule in raw_rules:
     for col in schema:
@@ -40,16 +43,24 @@ def get_expectations_and_actions(schema, expectations_path):
           row = new_row(rule, f"{nested.name}")
           nested_columns.add(col.name)
           expectations_and_actions.append(row)
+      elif isinstance(col.dataType, MapType):
+        keys = [row[0] for row in df.select(explode(col.name)).select("key").distinct().collect()]
+        columns.discard(col.name)
+        for key in keys:
+          columns.add(f"{col.name}.{key}")
+          row = new_row(rule, key)
+          expectations_and_actions.append(row)    
       else:
         row = new_row(rule, f"{col.name}")
         expectations_and_actions.append(row)
   
-  return pd.DataFrame(expectations_and_actions, columns=["expectation", "constraint", "mode", "action", "tag"]), nested_columns
+  return pd.DataFrame(expectations_and_actions, columns=["expectation", "constraint", "mode", "action", "tag"]), list(columns), nested_columns
 
 # COMMAND ----------
 
-schema = get_spark_read(INPUT_FORMAT, INPUT_PATH).schema
-expectations_and_actions, nested_columns = get_expectations_and_actions(schema, EXPECTATIONS_PATH)
+df = get_spark_read(INPUT_FORMAT, INPUT_PATH)
+columns = df.schema.fieldNames()
+expectations_and_actions, columns, nested_columns = get_expectations_and_actions(df, columns, EXPECTATIONS_PATH)
 
 # COMMAND ----------
 
@@ -62,15 +73,14 @@ def get_failed_expectations(expectations):
 
 # COMMAND ----------
 
-from pyspark.sql.functions import explode, regexp_extract, col
+from pyspark.sql.functions import regexp_extract, col
 import pyspark.sql.functions as F
 
 constraints = dict(zip(expectations_and_actions.expectation, expectations_and_actions.constraint))
 
-def get_sql_expressions(schema, nested_columns):
+def get_sql_expressions(columns, nested_columns):
     
-    all_columns = schema.fieldNames()
-    not_nested = [col for col in all_columns if col not in nested_columns]
+    not_nested = [col for col in columns if col not in nested_columns]
     select_sql = not_nested + list({f"{col}.*" for col in nested_columns})
 
     df = get_spark_read(INPUT_FORMAT, INPUT_PATH).limit(NUM_SAMPLE_ROWS).selectExpr(select_sql).na.fill("")
@@ -100,7 +110,7 @@ def get_sql_expressions(schema, nested_columns):
 
 # COMMAND ----------
 
-select_sql, redact_sql, pii_detected = get_sql_expressions(schema, nested_columns)
+select_sql, redact_sql, pii_detected = get_sql_expressions(columns, nested_columns)
 
 # COMMAND ----------
 
