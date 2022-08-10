@@ -1,5 +1,7 @@
 # DLT PII Firewall
 
+Take a look at the [companion blog](https://medium.com/@andrewpweaver/building-a-pii-firewall-with-delta-live-tables-4160eb9d61a1) for more info!
+
 > :warning: **THIS PROJECT IS PROVIDED AS-IS WITHOUT ANY GUARANTEES**: we make no claims as to the accuracy of the PII detection provided here, and if you decide to use it, it's **YOUR RESPONSIBILITY** to ensure that the example regexes and detection/redaction/tagging meets your internal, legal or regulatory requirements.
 
 ## Using [Delta Live Tables](https://databricks.com/product/delta-live-tables) to detect and redact PII data

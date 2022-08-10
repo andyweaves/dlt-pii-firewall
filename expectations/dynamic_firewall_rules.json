@@ -75,13 +75,14 @@
 			"constraint": "CAST({} AS STRING) NOT REGEXP('^\\\\d{3}-\\\\d{2}-\\\\d{4}$') AS result",
 			"action": "'[REDACTED]' AS {}",
 			"mode": "REDACT_AND_TAG"
+            "tag": "{} may contain redacted ssn"
 		},
 		{
 			"name": "{} may contain phone_number", 
 			"constraint": "CAST({} AS STRING) NOT REGEXP('((\\\\(\\\\d{3}\\\\) ?)|(\\\\d{3}-))?\\\\d{3}-\\\\d{4}') AS result",
 			"action": "regexp_replace({}, '[0-9]*', 'x') AS {}",
 			"mode": "REDACT_AND_TAG",
-            "tag": "{} may contain unredacted phone number"
+            "tag": "{} may contain redacted phone number"
 		},
         {
 			"name": "{} may contain imei", 
@@ -95,14 +96,14 @@
 			"constraint": "CAST({} AS STRING) NOT REGEXP('(?:19\\\\d{2}|20[01][0-1]|2001)[-/.](?:0[1-9]|1[012])[-/.](?:0[1-9]|[12][0-9]|3[01])') AS result",
 			"action": "regexp_replace({}, '(\\\\d{4})(-|/)', 'YYYY-') AS {}",
 			"mode": "REDACT_AND_TAG",
-            "tag": "{} may contain unredacted date of birth"
+            "tag": "{} may contain redacted date of birth"
 		},
 		{
 			"name": "{} may contain age", 
 			"constraint": "CAST({} AS STRING) NOT REGEXP('^(?:1[8-9]|[2-9][0-9])$') AS result",
 			"action": "regexp_replace({}, '^(?:1[8-9]|[2-9][0-9])$', '**') AS {}",
 			"mode": "REDACT_AND_TAG",
-            "tag": "{} may contain unredacted age"
+            "tag": "{} may contain redacted age"
 		},
 		{
 			"name": "{} may contain name", 

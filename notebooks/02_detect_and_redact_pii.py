@@ -47,7 +47,6 @@ def flatten_dataframe(df):
 
 import pandas as pd
 import json
-from pyspark.sql.types import StructType, MapType, ArrayType
 
 def new_row(rule, column_name): 
   
