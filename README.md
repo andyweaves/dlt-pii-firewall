@@ -12,25 +12,25 @@
 
 To get this pipeline running on your environment, please use the following steps:
 
-1. First you need some input data to run the pipeline on. If you don't have any data, or just want to try it out, you can use the [00_generate_data.py](notebooks/00_generate_data.py) notebook to generate some, using the following options to customise that data generation:
+1. Clone this Github Repo using Databricks Repos (see the docs for [AWS](https://docs.databricks.com/repos/index.html), [Azure](https://docs.microsoft.com/en-us/azure/databricks/repos/), [GCP](https://docs.gcp.databricks.com/repos/index.html))
+2. First you need some input data to run the pipeline on. If you don't have any data, or just want to try it out, you can use the [00_generate_data.py](notebooks/00_generate_data.py) notebook to generate some, using the following options to customise that data generation:
    * ```GENERATE_CLEAN_DATA```: Whether to generate 4 records of artificially created "clean data" specifically designed not to get evaluated as PII
    * ```GENERATE_PII_DATA```: Whether to generate fake PII data
    * ```NUM_ROWS```: The number of rows of fake PII data to generate
    * ```OUTPUT_DIR```: The path on cloud storage to write the generated data out to
-3. Clone this Github Repo using Databricks Repos (see the docs for [AWS](https://docs.databricks.com/repos/index.html), [Azure](https://docs.microsoft.com/en-us/azure/databricks/repos/), [GCP](https://docs.gcp.databricks.com/repos/index.html)). 
-4. Create a new DLT pipeline, selecting [01_observability.py](notebooks/01_observability.py) and [02_detect_and_redact_pii.py](notebooks/02_detect_and_redact_pii.py) as Notebook Libraries (see the docs for [AWS](https://docs.databricks.com/data-engineering/delta-live-tables/delta-live-tables-ui.html), [Azure](https://docs.microsoft.com/en-us/azure/databricks/data-engineering/delta-live-tables/delta-live-tables-ui), [GCP](https://docs.gcp.databricks.com/data-engineering/delta-live-tables/delta-live-tables-ui.html)). You’ll need add the following pipeline settings:
+3. Create a new DLT pipeline, selecting [01_observability.py](notebooks/01_observability.py) and [02_detect_and_redact_pii.py](notebooks/02_detect_and_redact_pii.py) as Notebook Libraries (see the docs for [AWS](https://docs.databricks.com/data-engineering/delta-live-tables/delta-live-tables-ui.html), [Azure](https://docs.microsoft.com/en-us/azure/databricks/data-engineering/delta-live-tables/delta-live-tables-ui), [GCP](https://docs.gcp.databricks.com/data-engineering/delta-live-tables/delta-live-tables-ui.html)). You’ll need add the following pipeline settings:
    * ```INPUT_PATH```: The path on cloud storage where the input data is located
    * ```INPUT_FORMAT```: The format of the input data. One of "delta", "parquet", "json", "csv" is supported
    * ```TABLE_PATH```: The path to write out all of the tables created by the pipeline to
    * ```STORAGE_PATH```: A location on cloud storage where output data and metadata required for the pipeline execution are stored. This should match the ```Storage Location``` entered below.
    * ```EXPECTATIONS_PATH```: The path to the [pii_firewall_rules.json](expectations/pii_firewall_rules.json) config file uploaded to an DBFS accessible path (for example a mounted storage bucket). This is the main configuration file used to customise the behaviour of the detection/redaction/tagging of data. See **Firewall Rules** below for more details
    * ```NUM_SAMPLE_ROWS```: In order to generate the SQL used to automatically redact the PII discovered, the pipeline will sample this many rows of data, evaluate it against your expectations and generate SQL code to leave it unchanged or redact it accordingly. The fewer rows sampled, the faster this initial stage of the pipeline will run, albeit the more likely that PII may make it through our firewall
-   * ```Target```: The name of a database for persisting pipeline output data. Configuring the target setting allows you to view and query the pipeline output data from the Databricks UI
+   * ```Target```: The name of the database for persisting all of the output data
    * ```Storage Location```: A location on cloud storage where output data and metadata required for the pipeline execution are stored. This should match the ```STORAGE_PATH``` entered above.
 5. Note: once you’ve edited the settings that are configurable via the UI, you’ll need to edit the JSON so that you can add the configuration needed to authenticate with your chosen cloud storage:
-   * For AWS add the ```instance_profile_arn``` to the aws_attributes object.
-   * For Azure add the Service Principal secrets to the ```spark_conf``` object.
-   * For GCP add the ```google_service_account``` to the  ```gcp_attributes``` object.
+   * For AWS add the ```instance_profile_arn``` to the aws_attributes object
+   * For Azure add the Service Principal secrets to the ```spark_conf``` object
+   * For GCP add the ```google_service_account``` to the  ```gcp_attributes``` object
 6. As well as the DLT pipeline, the project contains the notebook [03_tag_pii.py](notebooks/03_tag_pii.py). This is designed to run after the DLT pipeline has finished, and tag databases/tables/columns appropriate to confirm that:
    * They have been scanned for PII
    * That PII has either been found or not found
@@ -44,11 +44,13 @@ To get this pipeline running on your environment, please use the following steps
 
 The following data tables and views are created by this pipeline:
 
+> **_NOTE:_** The pipeline will try and flatten the first level of any nested columns of your input data. This is for performance as well as accuracy reasons (you can't apply ```REGEX``` to a ```struct```, ```array``` or ```map``` easily and so you could try to cast the entire column to a string but the performance of this will suck and it won't help you if you have lots of different nested PII). If you have more than one nested level you may want to consider what to do here - you could update the function ```flatten_dataframe()``` to recursively try to find nested columns, or you could update it to automatically drop any additional nested columns it finds after the first pass.
+
 ![image](https://user-images.githubusercontent.com/43955924/172695249-5ff5d38e-eda5-43fc-98c8-d0c32b18b109.png)
 
 | Name            | Type  | Description         |
 | ------------    | ----  | -----------         |
-| staging         | View  | Initial view that data is loaded into. May contain PII and therefore declared as a view (so that PII is not persisted after the pipeline has been run |
+| staging         | View  | Initial view that data is loaded into. May contain PII and therefore declared as a view (so that PII is not persisted after the pipeline has been run. |
 | quarantine      | View  | View containing data that has failed expectations. May contain PII and therefore declared as a view (so that PII is not persisted after the pipeline has been run |
 | clean           | Table | Table containing data that has passed expectations and therefore is not expected to contain PII  |
 | redacted        | Table | Table containing data that has failed expectations and therefore is expected to contain PII but in which that PII has been redacted based on the specified actions |
@@ -115,6 +117,6 @@ Every rule that you specify here will be applied against every column of your in
 * A firewall is only as good as its rules - the regular expressions provided are done so on an as-is basis and without any guarantees. That said, I’d love to test them against more data, refine their accuracy and add new regexes for PII types which aren’t covered yet. If you’re interested in collaborating on this, I’d love to hear from you!
 * In my experience most of the enterprise platforms that I encounter in this field still rely on regexes for ~90% of their PII detection. That said, it’s important to acknowledge that this approach is not without its limitations. If you used the notebook provided to generate your input data you’ll notice that there are two fields that our detection has failed pretty miserably on:
   * ```name``` - short of having a dictionary of every person’s name on the planet - in every language and every alphabet - detecting a person’s name via regex is pretty much an impossible job
-  * ```freetext``` - the way that expectations works means that if an expectation fails that row will not be evaluated against further expectations. It’s similar to error handling - if that row has failed, we mark it as failed and move on. The complication of this is that for fields that may contain multiple instances of PII (such as freetext fields), only the first type of PII identified will be identified and redacted.
+  * ```freetext``` - it's hard to iterate expectations and the associated regex sql across a column multiple times. Right now, only the first piece of PII detected in a column will be redacted, which may cause problems with columns that contain long strings of text
   * So what’s the answer here? I’d like to look at using more sophisticated approaches like Named Entity Recognition (NER) or Natural Language Processing (NLP) to improve the detection of specific PII types like names, addresses or businesses, and also to apply identification and redaction to the contents of an entire column at a time. Again, if you’re interested in collaborating on this, please let me know!
-* 80 - 90% of the world’s data is unstructured - whilst the approaches outlined here work well for structured or semi-structured data, unstructured data comes with its own, entirely different challenges! 
+* 80 - 90% of the world’s data is unstructured - whilst the approaches outlined here work well for structured and semi-structured data, unstructured data comes with its own, entirely different challenges! 
