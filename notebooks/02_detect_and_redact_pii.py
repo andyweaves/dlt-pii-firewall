@@ -88,7 +88,7 @@ constraints = dict(zip(expectations_and_actions.expectation, expectations_and_ac
 
 def get_sql_expressions(columns):
     
-    df = flatten_dataframe(get_spark_read(INPUT_FORMAT, INPUT_PATH).limit(NUM_SAMPLE_ROWS).na.fill(""))
+    df = flatten_dataframe(get_spark_read(INPUT_FORMAT, INPUT_PATH).limit(NUM_SAMPLE_ROWS)).na.fill("")
 
     # Drop duplicates because otherwise we'll need to handle duplicate columns in the downstream tables, which will get messy...
     pdf = df.withColumn("failed_expectations", array([expr(value) for key, value in constraints.items()])).withColumn("failed_expectations", get_failed_expectations("failed_expectations")).filter(size("failed_expectations") > 0).select(explode("failed_expectations").alias("expectation")).distinct().withColumn("failed_column", regexp_extract(col("expectation"), "\`(.*?)\`", 1)).toPandas().drop_duplicates(subset = ["failed_column"]).merge(expectations_and_actions, on="expectation")
@@ -126,7 +126,7 @@ import dlt
 def staging():
   
     return (
-      flatten_dataframe(get_spark_read(INPUT_FORMAT, INPUT_PATH).na.fill(""))
+      flatten_dataframe(get_spark_read(INPUT_FORMAT, INPUT_PATH)).na.fill("")
   )
 
 # COMMAND ----------
