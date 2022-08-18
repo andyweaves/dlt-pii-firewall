@@ -112,7 +112,7 @@ def get_sql_expressions(columns):
     pii_detected = False
 
     if len(pdf) > 0:
-        pii_detected = True
+      pii_detected = True
 
     redact_sql = [col for col in columns if col not in pdf["failed_column"].tolist()]
 
