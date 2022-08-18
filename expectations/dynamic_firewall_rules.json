@@ -5,112 +5,128 @@
 			"constraint": "CAST({} AS STRING) NOT REGEXP('^(?:4[0-9]{12}(?:[0-9]{3})?|[25][1-7][0-9]{14}|6(?:011|5[0-9][0-9])[0-9]{12}|3[47][0-9]{13}|3(?:0[0-5]|[68][0-9])[0-9]{11}|(?:2131|1800|35\\\\d{3})\\\\d{11})$') AS result",
 			"action": "concat('XXXXXXXXXXXXXXXX', substr({}, -3, 3)) AS {}",
 			"mode": "REDACT_AND_TAG",
-            "tag": "{} may contain redacted creditcard"
+            "tag": "{} may contain redacted creditcard",
+            "threshold": 1000
 		},
         {
 			"name": "{} may contain creditcard with spaces", 
 			"constraint": "CAST({} AS STRING) NOT REGEXP('^(?:4\\\\d{3}|5[1-5]\\\\d{2}|6011|3[47]\\\\d{2})([- ]?)\\\\d{4}\\\\1\\\\d{4}\\\\1\\\\d{4}$') AS result",
 			"action": "concat('XXXXXXXXXXXXXXXX', substr({}, -3, 3)) AS {}",
 			"mode": "REDACT_AND_TAG",
-            "tag": "{} may contain redacted creditcard"
+            "tag": "{} may contain redacted creditcard",
+            "threshold": 1000
 		},   
 		{
 			"name": "{} may contain expiry date", 
 			"constraint": "CAST({} AS STRING) NOT REGEXP('^\\\\d{2}/\\\\d{2}$') AS result",
 			"action": "regexp_replace({}, '^(0[1-9]|1[0-2])', 'XX') AS {}",
 			"mode": "REDACT_AND_TAG",
-            "tag": "{} may contain redacted expiry date"
+            "tag": "{} may contain redacted expiry date",
+            "threshold": 1000
 		},
 		{
 			"name": "{} may contain security code", 
 			"constraint": "CAST({} AS STRING) NOT REGEXP('^\\\\d{3}$') AS result",
 			"action": "base64(aes_encrypt(CAST({} AS STRING), 'abcdefghijklmnop')) AS {}",
 			"mode": "REDACT_AND_TAG",
-            "tag": "{} may contain aes encrypted security code" 
+            "tag": "{} may contain aes encrypted security code",
+            "threshold": 1000
 		},
         {
 			"name": "{} may contain iban", 
 			"constraint": "CAST({} AS STRING) NOT REGEXP('[a-zA-Z]{2}[0-9]{2}[a-zA-Z0-9]{4}[0-9]{7}([a-zA-Z0-9]?)+') AS result",
 			"action": "regexp_replace({}, '[a-zA-Z]{2}[0-9]{2}[a-zA-Z0-9]{4}[0-9]{7}([a-zA-Z0-9]?)+', concat(substr({}, 0, 2), 'XXXXXXXXXXXXXXXX', substr({}, -3, 3))) AS {}",
 			"mode": "REDACT_AND_TAG",
-            "tag": "{} may contain redacted iban" 
+            "tag": "{} may contain redacted iban",
+            "threshold": 1000
 		},
 		{
 			"name": "{} may contain email address", 
 			"constraint": "CAST({} AS STRING) NOT REGEXP('([a-zA-Z0-9+._-]+@[a-zA-Z0-9._-]+\\.[a-zA-Z0-9_-]+)') AS result",
 			"action": "regexp_replace(CAST({} AS STRING), '[\\\\w\\\\.=-]+@', '') AS {}",
 			"mode": "REDACT_AND_TAG",
-            "tag": "{} may contain anonymised email address"
+            "tag": "{} may contain anonymised email address",
+            "threshold": 1000
 		},
 		{
 			"name": "{} may contain ipv4", 
 			"constraint": "CAST({} AS STRING) NOT REGEXP('((?:[0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])[.]){3}(?:[0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(:\\\\d{1,5})?') AS result",
 			"action": "concat(substring_index(CAST({} AS STRING), '.', 3), '.0/24') AS {}",
 			"mode": "REDACT_AND_TAG",
-            "tag": "{} may contain anonymised ipv4 address"
+            "tag": "{} may contain anonymised ipv4 address",
+            "threshold": 1000
 		},
         {
 			"name": "{} may contain ipv6", 
 			"constraint": "CAST({} AS STRING) NOT REGEXP('\\s*(?!.*::.*::)(?:(?!:)|:(?=:))(?:[0-9a-f]{0,4}(?:(?<=::)|(?<!::):)){6}(?:[0-9a-f]{0,4}(?:(?<=::)|(?<!::):)[0-9a-f]{0,4}(?:(?<=::)|(?<!:)|(?<=:)(?<!::):)|(?:25[0-4]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)(?:\\.(?:25[0-4]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3})\\s*') AS result",
 			"action": "concat(substring_index(CAST({} AS STRING), ':', 2), ':::::') AS {}",
 			"mode": "REDACT_AND_TAG",
-            "tag": "{} may contain anonymised ipv6 address"
+            "tag": "{} may contain anonymised ipv6 address",
+            "threshold": 1000
 		},
         {
           "name": "{} may contain mac address", 
 		  "constraint": "CAST({} AS STRING) NOT REGEXP('^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$') AS result",
 		  "action": "sha2(CAST({} AS STRING), 256) AS {}",
 		  "mode": "REDACT_AND_TAG",
-          "tag": "{} may contain sha2 hashed mac address" 
+          "tag": "{} may contain sha2 hashed mac address",
+          "threshold": 1000
         },
 		{
 			"name": "{} may contain us_address", 
 			"constraint": "CAST({} AS STRING) NOT REGEXP('^([0-9][0-9]{0,5})(.*?\\n)([A-Za-z]{2})(.*)([0-9]{5})$') AS result",
 			"action": "regexp_extract({}, '\\\\b[A-Z]{2}(?=\\\\s+\\\\d{5}$)', 0) AS {}",
 			"mode": "REDACT_AND_TAG",
-            "tag": "{} may contain partially anonymised us address"
+            "tag": "{} may contain partially anonymised us address",
+            "threshold": 1000
 		},
         {
 			"name": "{} may contain ssn", 
 			"constraint": "CAST({} AS STRING) NOT REGEXP('^\\\\d{3}-\\\\d{2}-\\\\d{4}$') AS result",
 			"action": "'[REDACTED]' AS {}",
-			"mode": "REDACT_AND_TAG"
-            "tag": "{} may contain redacted ssn"
+			"mode": "REDACT_AND_TAG",
+            "tag": "{} may contain redacted ssn",
+            "threshold": 1000
 		},
 		{
 			"name": "{} may contain phone_number", 
 			"constraint": "CAST({} AS STRING) NOT REGEXP('((\\\\(\\\\d{3}\\\\) ?)|(\\\\d{3}-))?\\\\d{3}-\\\\d{4}') AS result",
 			"action": "regexp_replace({}, '[0-9]*', 'x') AS {}",
 			"mode": "REDACT_AND_TAG",
-            "tag": "{} may contain redacted phone number"
+            "tag": "{} may contain redacted phone number",
+            "threshold": 1000
 		},
         {
 			"name": "{} may contain imei", 
 			"constraint": "CAST({} AS STRING) NOT REGEXP('\\\\d{15,17}') AS result",
 			"action": "'[REDACTED]' AS {}",
 			"mode": "REDACT_AND_TAG",
-            "tag": "{} may contain redacted imei"
+            "tag": "{} may contain redacted imei",
+            "threshold": 1000
 		},
 		{
 			"name": "{} may contain date_of_birth", 
 			"constraint": "CAST({} AS STRING) NOT REGEXP('(?:19\\\\d{2}|20[01][0-1]|2001)[-/.](?:0[1-9]|1[012])[-/.](?:0[1-9]|[12][0-9]|3[01])') AS result",
 			"action": "regexp_replace({}, '(\\\\d{4})(-|/)', 'YYYY-') AS {}",
 			"mode": "REDACT_AND_TAG",
-            "tag": "{} may contain redacted date of birth"
+            "tag": "{} may contain redacted date of birth",
+            "threshold": 1000
 		},
 		{
 			"name": "{} may contain age", 
 			"constraint": "CAST({} AS STRING) NOT REGEXP('^(?:1[8-9]|[2-9][0-9])$') AS result",
 			"action": "regexp_replace({}, '^(?:1[8-9]|[2-9][0-9])$', '**') AS {}",
 			"mode": "REDACT_AND_TAG",
-            "tag": "{} may contain redacted age"
+            "tag": "{} may contain redacted age",
+            "threshold": 1000
 		},
 		{
 			"name": "{} may contain name", 
 			"constraint": "CAST({} AS STRING) NOT REGEXP('^[a-zA-ZàáâäãåąčćęèéêëėįìíîïłńòóôöõøùúûüųūÿýżźñçčšžÀÁÂÄÃÅĄĆČĖĘÈÉÊËÌÍÎÏĮŁŃÒÓÔÖÕØÙÚÛÜŲŪŸÝŻŹÑßÇŒÆČŠŽ∂ð ,.\\'-]{2,30}$') AS result",
 			"action": "'[CUSTOMER_NAME]' AS {}",
 			"mode": "REDACT_AND_TAG",
-            "tag": "{} may contain redacted name"
+            "tag": "{} may contain redacted name",
+            "threshold": 1000
 		}
 	]
 }

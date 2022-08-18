@@ -4,6 +4,7 @@ INPUT_FORMAT = spark.conf.get("INPUT_FORMAT")
 TABLE_PATH = spark.conf.get("TABLE_PATH")
 EXPECTATIONS_PATH = spark.conf.get("EXPECTATIONS_PATH")
 NUM_SAMPLE_ROWS = int(spark.conf.get("NUM_SAMPLE_ROWS"))
+NESTED_DEPTH = int(spark.conf.get("NESTED_DEPTH"))
 
 # COMMAND ----------
 
@@ -19,27 +20,37 @@ def get_spark_read(input_format, input_path):
 from pyspark.sql.types import StructType, MapType, ArrayType
 from pyspark.sql.functions import col, explode, map_keys, size
 
-def flatten_dataframe(df):
+def flatten_dataframe(df, num_iterations):
   
-  for field in df.schema.fields:
-  
-    if isinstance(field.dataType, StructType):
-      for nested_field in field.dataType:
-        df = df.withColumn(f"{field.name}->{nested_field.name}", col(f"{field.name}.{nested_field.name}"))
-      df = df.drop(col(field.name))
+  for n in range(1, num_iterations + 1, 1):
     
-    elif isinstance(field.dataType, MapType):
-      keys = list(map(lambda row: row[0], df.select(explode(map_keys(col("pii_map")))).distinct().collect()))
-      for k in keys:
-        df = df.withColumn(f"{field.name}->{k}", col(f"{field.name}.{k}"))
-      df = df.drop(col(field.name))
-      
-    elif isinstance(field.dataType, ArrayType):
-      i = 0
-      while i <= df.select(size(col(field.name))).head()[0] - 1:
-        df = df.withColumn(f"{field.name}->{i}", col(f"{field.name}")[i])
-        i += 1
-      df = df.drop(col(field.name))
+    nested = False
+    
+    for field in df.schema.fields:
+
+      if isinstance(field.dataType, StructType):
+        nested = True
+        for nested_field in field.dataType:
+          df = df.withColumn(f"l{n}->{field.name}->{nested_field.name}", col(f"{field.name}.{nested_field.name}"))
+        df = df.drop(col(field.name))
+
+      elif isinstance(field.dataType, MapType):
+        nested = True
+        keys = list(map(lambda row: row[0], df.select(explode(map_keys(col("pii_map")))).distinct().collect()))
+        for k in keys:
+          df = df.withColumn(f"l{n}->{field.name}->{k}", col(f"{field.name}.{k}"))
+        df = df.drop(col(field.name))
+
+      elif isinstance(field.dataType, ArrayType):
+        nested = True
+        i = 0
+        while i <= df.select(size(col(field.name))).head()[0] - 1:
+          df = df.withColumn(f"l{n}->{field.name}->{i}", col(f"{field.name}")[i])
+          i += 1
+        df = df.drop(col(field.name))
+        
+    if nested == False:
+      break
   
   return df
 
@@ -50,7 +61,7 @@ import json
 
 def new_row(rule, column_name): 
   
-  return {"expectation": str(rule.get("name")).replace("{}", f"`{column_name}`"), "constraint": rule["constraint"].replace("{}",  f"`{column_name}`"), "mode": rule["mode"], "action": str(rule.get("action")).replace("{}", f"`{column_name}`"), "tag": str(rule.get("tag")).replace("{}", f"`{column_name}`")}
+  return {"expectation": str(rule.get("name")).replace("{}", f"`{column_name}`"), "constraint": rule["constraint"].replace("{}",  f"`{column_name}`"), "mode": rule["mode"], "action": str(rule.get("action")).replace("{}", f"`{column_name}`"), "tag": str(rule.get("tag")).replace("{}", f"`{column_name}`"), "threshold": rule.get("threshold")}
 
 def get_expectations_and_actions(schema, expectations_path):
   
@@ -64,11 +75,11 @@ def get_expectations_and_actions(schema, expectations_path):
       row = new_row(rule, f"{col.name}")
       expectations_and_actions.append(row)
   
-  return pd.DataFrame(expectations_and_actions, columns=["expectation", "constraint", "mode", "action", "tag"])
+  return pd.DataFrame(expectations_and_actions, columns=["expectation", "constraint", "mode", "action", "tag", "threshold"])
 
 # COMMAND ----------
 
-schema = flatten_dataframe(get_spark_read(INPUT_FORMAT, INPUT_PATH)).schema
+schema = flatten_dataframe(get_spark_read(INPUT_FORMAT, INPUT_PATH), NESTED_DEPTH).schema
 expectations_and_actions = get_expectations_and_actions(schema, EXPECTATIONS_PATH)
 
 # COMMAND ----------
@@ -88,17 +99,21 @@ constraints = dict(zip(expectations_and_actions.expectation, expectations_and_ac
 
 def get_sql_expressions(columns):
     
-    df = flatten_dataframe(get_spark_read(INPUT_FORMAT, INPUT_PATH).limit(NUM_SAMPLE_ROWS))
+    df = flatten_dataframe(get_spark_read(INPUT_FORMAT, INPUT_PATH).limit(NUM_SAMPLE_ROWS), NESTED_DEPTH)
 
     # Drop duplicates because otherwise we'll need to handle duplicate columns in the downstream tables, which will get messy...
-    pdf = df.withColumn("failed_expectations", array([expr(value) for key, value in constraints.items()])).withColumn("failed_expectations", get_failed_expectations("failed_expectations")).filter(size("failed_expectations") > 0).select(explode("failed_expectations").alias("expectation")).distinct().withColumn("failed_column", regexp_extract(col("expectation"), "\`(.*?)\`", 1)).toPandas().drop_duplicates(subset = ["failed_column"]).merge(expectations_and_actions, on="expectation")
+    pdf = (df.withColumn("failed_expectations", array([expr(value) for key, value in constraints.items()]))
+           .withColumn("failed_expectations", get_failed_expectations("failed_expectations"))
+           .filter(size("failed_expectations") > 0)
+           .select(explode("failed_expectations").alias("expectation")).distinct()
+           .withColumn("failed_column", regexp_extract(col("expectation"), "\`(.*?)\`", 1)).toPandas()
+           .drop_duplicates(subset = ["failed_column"]).merge(expectations_and_actions, on="expectation"))
     
     pii_detected = False
 
     if len(pdf) > 0:
         pii_detected = True
 
-    # Todo - change to list comprehension. It's more performant...
     redact_sql = [col for col in columns if col not in pdf["failed_column"].tolist()]
 
     def generate_sql(row):
@@ -126,7 +141,7 @@ import dlt
 def staging():
   
     return (
-      flatten_dataframe(get_spark_read(INPUT_FORMAT, INPUT_PATH))
+      flatten_dataframe(get_spark_read(INPUT_FORMAT, INPUT_PATH), NESTED_DEPTH)
   )
 
 # COMMAND ----------
