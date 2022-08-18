@@ -31,21 +31,21 @@ def flatten_dataframe(df, num_iterations):
       if isinstance(field.dataType, StructType):
         nested = True
         for nested_field in field.dataType:
-          df = df.withColumn(f"l{n}->{field.name}->{nested_field.name}", col(f"{field.name}.{nested_field.name}"))
+          df = df.withColumn(f"L{n}->{field.name}->{nested_field.name}", col(f"{field.name}.{nested_field.name}"))
         df = df.drop(col(field.name))
 
       elif isinstance(field.dataType, MapType):
         nested = True
         keys = list(map(lambda row: row[0], df.select(explode(map_keys(col("pii_map")))).distinct().collect()))
         for k in keys:
-          df = df.withColumn(f"l{n}->{field.name}->{k}", col(f"{field.name}.{k}"))
+          df = df.withColumn(f"L{n}->{field.name}->{k}", col(f"{field.name}.{k}"))
         df = df.drop(col(field.name))
 
       elif isinstance(field.dataType, ArrayType):
         nested = True
         i = 0
         while i <= df.select(size(col(field.name))).head()[0] - 1:
-          df = df.withColumn(f"l{n}->{field.name}->{i}", col(f"{field.name}")[i])
+          df = df.withColumn(f"L{n}->{field.name}->{i}", col(f"{field.name}")[i])
           i += 1
         df = df.drop(col(field.name))
         
