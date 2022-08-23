@@ -14,7 +14,7 @@ import json
 
 def new_row(rule, column_name): 
   
-  return {"expectation": str(rule.get("name")).replace("{}", f"`{column_name}`"), "constraint": rule["constraint"].replace("{}",  f"`{column_name}`"), "mode": rule["mode"], "action": str(rule.get("action")).replace("{}", f"`{column_name}`"), "tag": str(rule.get("tag")).replace("{}", f"`{column_name}`")}
+  return {"expectation": str(rule.get("name")).replace("{}", f"`{column_name}`"), "constraint": rule["constraint"].replace("{}",  f"`{column_name}`"), "mode": rule["mode"], "action": str(rule.get("action")).replace("{}", f"`{column_name}`"), "tag": str(rule.get("tag")).replace("{}", f"`{column_name}`"), "redact_threshold": rule.get("redact_threshold"), "tag_threshold": rule.get("tag_threshold")}
 
 def get_expectations_and_actions(schema, expectations_path):
   
@@ -28,7 +28,7 @@ def get_expectations_and_actions(schema, expectations_path):
       row = new_row(rule, f"{col.name}")
       expectations_and_actions.append(row)
   
-  return pd.DataFrame(expectations_and_actions, columns=["expectation", "constraint", "mode", "action", "tag"])
+  return pd.DataFrame(expectations_and_actions, columns=["expectation", "constraint", "mode", "action", "tag", "redact_threshold", "tag_threshold"])
 
 # COMMAND ----------
 
@@ -39,8 +39,10 @@ expectations_and_actions = get_expectations_and_actions(schema, EXPECTATIONS_PAT
 
 from pyspark.sql.functions import explode, regexp_extract, col
 
-# Drop duplicates because otherwise we'll need to handle duplicate columns in the downstream tables, which will get messy
-failed_expectations = spark.table(f"{DATABASE_NAME}.redacted").select(explode("failed_expectations").alias("expectation")).distinct().withColumn("failed_column", regexp_extract(col("expectation"), "\`(.*?)\`", 1)).toPandas().drop_duplicates(subset = ["failed_column"]).merge(expectations_and_actions, on="expectation")
+failed_expectations = (spark.table(f"{DATABASE_NAME}.redacted")
+                       .select(explode("failed_expectations").alias("expectation")).distinct()
+                       .withColumn("failed_column", regexp_extract(col("expectation"), "\`(.*?)\`", 1))
+                       .toPandas().drop_duplicates(subset = ["failed_column"]).merge(expectations_and_actions, on="expectation"))
 
 # COMMAND ----------
 

@@ -61,7 +61,7 @@ import json
 
 def new_row(rule, column_name): 
   
-  return {"expectation": str(rule.get("name")).replace("{}", f"`{column_name}`"), "constraint": rule["constraint"].replace("{}",  f"`{column_name}`"), "mode": rule["mode"], "action": str(rule.get("action")).replace("{}", f"`{column_name}`"), "tag": str(rule.get("tag")).replace("{}", f"`{column_name}`"), "threshold": rule.get("threshold")}
+  return {"expectation": str(rule.get("name")).replace("{}", f"`{column_name}`"), "constraint": rule["constraint"].replace("{}",  f"`{column_name}`"), "mode": rule["mode"], "action": str(rule.get("action")).replace("{}", f"`{column_name}`"), "tag": str(rule.get("tag")).replace("{}", f"`{column_name}`"), "redact_threshold": rule.get("redact_threshold"), "tag_threshold": rule.get("tag_threshold")}
 
 def get_expectations_and_actions(schema, expectations_path):
   
@@ -75,7 +75,7 @@ def get_expectations_and_actions(schema, expectations_path):
       row = new_row(rule, f"{col.name}")
       expectations_and_actions.append(row)
   
-  return pd.DataFrame(expectations_and_actions, columns=["expectation", "constraint", "mode", "action", "tag", "threshold"])
+  return pd.DataFrame(expectations_and_actions, columns=["expectation", "constraint", "mode", "action", "tag", "redact_threshold", "tag_threshold"])
 
 # COMMAND ----------
 
@@ -93,7 +93,7 @@ def get_failed_expectations(expectations):
 
 # COMMAND ----------
 
-from pyspark.sql.functions import array, expr, regexp_extract
+from pyspark.sql.functions import array, expr, regexp_extract, lit, desc
 
 constraints = dict(zip(expectations_and_actions.expectation, expectations_and_actions.constraint))
 
@@ -101,14 +101,20 @@ def get_sql_expressions(columns):
     
     df = flatten_dataframe(get_spark_read(INPUT_FORMAT, INPUT_PATH).limit(NUM_SAMPLE_ROWS), NESTED_DEPTH)
 
-    # Drop duplicates because otherwise we'll need to handle duplicate columns in the downstream tables, which will get messy...
     pdf = (df.withColumn("failed_expectations", array([expr(value) for key, value in constraints.items()]))
-           .withColumn("failed_expectations", get_failed_expectations("failed_expectations"))
-           .filter(size("failed_expectations") > 0)
-           .select(explode("failed_expectations").alias("expectation")).distinct()
-           .withColumn("failed_column", regexp_extract(col("expectation"), "\`(.*?)\`", 1)).toPandas()
-           .drop_duplicates(subset = ["failed_column"]).merge(expectations_and_actions, on="expectation"))
-    
+       .withColumn("failed_expectations", get_failed_expectations("failed_expectations"))
+       .filter(size("failed_expectations") > 0)
+       .select(explode("failed_expectations").alias("expectation"))
+       .withColumn("failed_column", regexp_extract(col("expectation"), "\`(.*?)\`", 1))
+       .groupBy("expectation", "failed_column").count()
+       .orderBy(desc("count"))
+       .withColumn("sample_rows", lit(NUM_SAMPLE_ROWS))
+       .withColumn("percent_failed", col("count") / col("sample_rows") * 100)
+       .toPandas()
+       .merge(expectations_and_actions, on="expectation")
+       .query('percent_failed >= redact_threshold')
+       .drop_duplicates(subset = ["failed_column"], keep="first"))
+
     pii_detected = False
 
     if len(pdf) > 0:
