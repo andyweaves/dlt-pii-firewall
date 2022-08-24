@@ -93,6 +93,7 @@ def get_failed_expectations(expectations):
 
 # COMMAND ----------
 
+import pyspark.pandas as ps
 from pyspark.sql.functions import array, expr, regexp_extract, lit, desc
 
 constraints = dict(zip(expectations_and_actions.expectation, expectations_and_actions.constraint))
@@ -100,7 +101,8 @@ constraints = dict(zip(expectations_and_actions.expectation, expectations_and_ac
 def get_sql_expressions(columns):
     
     df = flatten_dataframe(get_spark_read(INPUT_FORMAT, INPUT_PATH).limit(NUM_SAMPLE_ROWS), NESTED_DEPTH)
-
+   
+    # Do the heavy lifting in pyspark and then convert to pandas once we've dropped duplicates to make the following steps run faster
     pdf = (df.withColumn("failed_expectations", array([expr(value) for key, value in constraints.items()]))
        .withColumn("failed_expectations", get_failed_expectations("failed_expectations"))
        .filter(size("failed_expectations") > 0)
@@ -110,10 +112,10 @@ def get_sql_expressions(columns):
        .orderBy(desc("count"))
        .withColumn("sample_rows", lit(NUM_SAMPLE_ROWS))
        .withColumn("percent_failed", col("count") / col("sample_rows") * 100)
-       .toPandas()
-       .merge(expectations_and_actions, on="expectation")
+       .pandas_api()
+       .merge(ps.DataFrame(expectations_and_actions), on="expectation")
        .query('percent_failed >= redact_threshold')
-       .drop_duplicates(subset = ["failed_column"], keep="first"))
+       .drop_duplicates(subset = ["failed_column"], keep="first")).toPandas()
 
     pii_detected = False
 

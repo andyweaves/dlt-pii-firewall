@@ -34,19 +34,23 @@ def get_expectations_and_actions(schema, expectations_path):
 
 schema = spark.table(f"{DATABASE_NAME}.redacted").schema
 expectations_and_actions = get_expectations_and_actions(schema, EXPECTATIONS_PATH)
+rows = spark.table(f"{DATABASE_NAME}.redacted").count()
 
 # COMMAND ----------
 
-from pyspark.sql.functions import explode, regexp_extract, col
+from pyspark.sql.functions import explode, regexp_extract, col, lit
 
 failed_expectations = (spark.table(f"{DATABASE_NAME}.redacted")
-                       .select(explode("failed_expectations").alias("expectation")).distinct()
+                       .select(explode("failed_expectations").alias("expectation"))
                        .withColumn("failed_column", regexp_extract(col("expectation"), "\`(.*?)\`", 1))
-                       .toPandas().drop_duplicates(subset = ["failed_column"]).merge(expectations_and_actions, on="expectation"))
+                       .groupBy("expectation", "failed_column").count()
+                       .orderBy(desc("count"))
+                       .withColumn("percent_failed", col("count") / lit(rows) * 100)
+                       .query('percent_failed >= tag_threshold')
+                       .toPandas()
+                       .merge(expectations_and_actions, on="expectation"))
 
 # COMMAND ----------
-
-import re
 
 if len(failed_expectations) > 0:
   spark.sql(f"ALTER DATABASE {DATABASE_NAME} SET DBPROPERTIES ('pii_scanned' = 'True')")
