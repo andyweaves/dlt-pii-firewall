@@ -109,11 +109,13 @@ Every rule that you specify here will be applied against every column of your in
 
 | Element    | Is Mandatory | Can Contain | Description |
 |------------|-----------|---------|-------------|
-| name       | Yes | any string | The name of the expectation. {} will be replaced by the column name.|
+| name       | Yes | any string | The name of the expectation. ```{}``` will be replaced by the column name.|
 | constraint | Yes | a valid SQL invariant  | The expectation on which success or failure will determine whether the row contains PII or not. |
 | action     | No  | a valid SQL expression | The action that will be applied if any rows in the column fail when evaluated against their expectation AND the mode selected is REDACT or REDACT_AND_TAG |
-| mode       | Yes | One of "REDACT", "TAG", or "REDACT_AND_TAG" | Whether to REDACT, just TAG or REDACT_AND_TAG all of the rows in any column if any rows in the column fail when evaluated against their expectation  |
-| tag        | No  | any string  | The comment to be added to any columns found to contain the. {} will be replaced by the column name. |
+| mode       | Yes | One of ```REDACT```, ```TAG```, or ```REDACT_AND_TAG``` | Whether to ```REDACT```, just ```TAG``` or ```REDACT_AND_TAG``` all of the rows in any column if any rows in the column fail when evaluated against their expectation  |
+| tag        | No  | any string  | The comment to be added to any columns found to contain the. ```{}``` will be replaced by the column name. |
+| redact_threshold | Yes | A number between 0 and 100 | During the generation of redaction SQL, the pipeline will sample ```NUM_SAMPLE_ROWS``` to detect PII. If the % of failed expectations found in these sample rows is greater than the ```redact_threshold```, that column will have the specified ```action``` applied to it. The threshold is useful for fine-tuning REGEXES which may generate a lot of false positives versus those you are confident will always find PII. |
+| tag_threshold | Yes |A number between 0 and 100 | During the PII tagging step, all failed expectations will be used to determine whether to tag the column as potentially containing PII. If the % of failed expectations for each expectation is greater than the ```tag_threshold```, we will tag this column as potentially containing PII. This threshold is useful for fine-tuning REGEXES which may generate a lot of false positives versus those you are confident will always find PII. |
 
 ## Next Steps
 
