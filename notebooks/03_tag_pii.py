@@ -38,7 +38,7 @@ rows = spark.table(f"{DATABASE_NAME}.redacted").count()
 
 # COMMAND ----------
 
-from pyspark.sql.functions import explode, regexp_extract, col, lit
+from pyspark.sql.functions import explode, regexp_extract, col, desc, lit
 
 failed_expectations = (spark.table(f"{DATABASE_NAME}.redacted")
                        .select(explode("failed_expectations").alias("expectation"))

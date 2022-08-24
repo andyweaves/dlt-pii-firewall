@@ -112,10 +112,10 @@ def get_sql_expressions(columns):
        .orderBy(desc("count"))
        .withColumn("sample_rows", lit(NUM_SAMPLE_ROWS))
        .withColumn("percent_failed", col("count") / col("sample_rows") * 100)
-       .pandas_api()
-       .merge(ps.from_pandas(expectations_and_actions), on="expectation")
+       .toPandas()
+       .merge(expectations_and_actions, on="expectation")
        .query('percent_failed >= redact_threshold')
-       .drop_duplicates(subset = ["failed_column"], keep="first")).to_pandas()
+       .drop_duplicates(subset = ["failed_column"], keep="first"))
 
     pii_detected = False
 
