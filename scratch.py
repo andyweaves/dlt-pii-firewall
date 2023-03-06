@@ -1,10 +1,10 @@
 # Databricks notebook source
-INPUT_PATH = spark.conf.get("INPUT_PATH")
-INPUT_FORMAT = spark.conf.get("INPUT_FORMAT")
-TABLE_PATH = spark.conf.get("TABLE_PATH")
-EXPECTATIONS_PATH = spark.conf.get("EXPECTATIONS_PATH")
-NUM_SAMPLE_ROWS = int(spark.conf.get("NUM_SAMPLE_ROWS"))
-NESTED_DEPTH = int(spark.conf.get("NESTED_DEPTH"))
+INPUT_PATH = "dbfs:/aw_test/customer_raw"
+INPUT_FORMAT = "parquet"
+#TABLE_PATH = spark.conf.get("TABLE_PATH")
+EXPECTATIONS_PATH = "/Workspace/Repos/andrew.weaver@databricks.com/dlt-pii-firewall/expectations/dynamic_firewall_rules.json"
+NUM_SAMPLE_ROWS = 1000
+NESTED_DEPTH = 5
 
 # COMMAND ----------
 
@@ -136,76 +136,97 @@ def get_sql_expressions(columns):
 
 # COMMAND ----------
 
+columns = schema.fieldNames()
+
+dfx = flatten_dataframe(get_spark_read(INPUT_FORMAT, INPUT_PATH).limit(NUM_SAMPLE_ROWS), NESTED_DEPTH)
+
+pdf = (dfx.withColumn("failed_expectations", array([expr(value) for key, value in constraints.items()]))
+     .withColumn("failed_expectations", get_failed_expectations("failed_expectations"))
+     .filter(size("failed_expectations") > 0)
+     .select(explode("failed_expectations").alias("expectation"))
+     .withColumn("failed_column", regexp_extract(col("expectation"), "\`(.*?)\`", 1))
+     .groupBy("expectation", "failed_column").count()
+     .orderBy(desc("count"))
+     .withColumn("sample_rows", lit(NUM_SAMPLE_ROWS))
+     .withColumn("percent_failed", col("count") / col("sample_rows") * 100)
+     .toPandas()
+     .merge(expectations_and_actions, on="expectation")
+     .query('percent_failed >= redact_threshold')
+     .drop_duplicates(subset = ["failed_column"], keep="first"))
+
+# COMMAND ----------
+
+ pii_detected = False
+
+if len(pdf) > 0:
+  pii_detected = True
+  
+redact_sql = [f"`{col}`" for col in columns if col not in pdf["failed_column"].tolist()]
+redact_sql
+
+# COMMAND ----------
+
+
+    redact_sql = [col for col in columns if col not in pdf["failed_column"].tolist()]
+
+    def generate_sql(row):
+      if row["mode"] in ["REDACT", "REDACT_AND_TAG"]:
+          redact_sql.append(row["action"])
+      elif row["mode"] == "TAG":
+          redact_sql.append(row["failed_column"])  
+
+    pdf.apply(generate_sql, axis=1)
+
+# COMMAND ----------
+
+df = flatten_dataframe(get_spark_read(INPUT_FORMAT, INPUT_PATH).limit(NUM_SAMPLE_ROWS), NESTED_DEPTH)
+   
+    # Do the heavy lifting in pyspark and then convert to pandas once we've dropped duplicates to make the following steps run faster
+    pdf = (df.withColumn("failed_expectations", array([expr(value) for key, value in constraints.items()]))
+       .withColumn("failed_expectations", get_failed_expectations("failed_expectations"))
+       .filter(size("failed_expectations") > 0)
+       .select(explode("failed_expectations").alias("expectation"))
+       .withColumn("failed_column", regexp_extract(col("expectation"), "\`(.*?)\`", 1))
+       .groupBy("expectation", "failed_column").count()
+       .orderBy(desc("count"))
+       .withColumn("sample_rows", lit(NUM_SAMPLE_ROWS))
+       .withColumn("percent_failed", col("count") / col("sample_rows") * 100)
+       .toPandas()
+       .merge(expectations_and_actions, on="expectation")
+       .query('percent_failed >= redact_threshold')
+       .drop_duplicates(subset = ["failed_column"], keep="first"))
+
+    pii_detected = False
+
+    if len(pdf) > 0:
+      pii_detected = True
+
+    redact_sql = [col for col in columns if col not in pdf["failed_column"].tolist()]
+
+    def generate_sql(row):
+      if row["mode"] in ["REDACT", "REDACT_AND_TAG"]:
+          redact_sql.append(row["action"])
+      elif row["mode"] == "TAG":
+          redact_sql.append(row["failed_column"])  
+
+    pdf.apply(generate_sql, axis=1)
+
+# COMMAND ----------
+
 redact_sql, pii_detected = get_sql_expressions(schema.fieldNames())
+redact_sql
 
 # COMMAND ----------
 
-import dlt
-
-@dlt.view(
-  name="staging",
-  comment="Raw data that has not been scanned for PII"
-)
-def staging():
-  
-    return (
-      flatten_dataframe(get_spark_read(INPUT_FORMAT, INPUT_PATH), NESTED_DEPTH)
-  )
+df = flatten_dataframe(get_spark_read(INPUT_FORMAT, INPUT_PATH), NESTED_DEPTH).limit(100)
+display(df)
 
 # COMMAND ----------
 
-@dlt.table(
-  name="clean",
-  comment="Clean data that has been scanned without finding any PII",
-  path=f"{TABLE_PATH}/clean/",
-  table_properties={"pii_scanned" : "True", "pii_found": "False"}
-)
-@dlt.expect_all_or_drop(constraints) 
-def clean():
-  return dlt.read("staging")
+df = df.withColumn("failed_expectations", array([expr(value) for key, value in constraints.items()])).withColumn("failed_expectations", get_failed_expectations("failed_expectations")).filter(size("failed_expectations") > 0)
+display(df)
 
 # COMMAND ----------
 
-@dlt.view(
- name="quarantine",
- comment="Data that has been scanned and quarantined for potentially containing PII"
-)
-def quarantine():
-  
-  return (
-      dlt
-        .read("staging")
-        .withColumn("failed_expectations", array([expr(value) for key, value in constraints.items()]))
-        .withColumn("failed_expectations", get_failed_expectations("failed_expectations"))
-        .filter(size("failed_expectations") > 0)
-  )
-
-# COMMAND ----------
-
-@dlt.table(
-  name="redacted",
-  comment="Data in which PII has been found and redacted based on a set of predefined rules",
-  path=f"{TABLE_PATH}/redacted/",
-  table_properties={"pii_scanned" : "True", "pii_found": str(pii_detected)}
-)
-def redacted(redact_sql = redact_sql):
-  
-  return dlt.read("quarantine").selectExpr(redact_sql + ["failed_expectations"])
-
-# COMMAND ----------
-
-from pyspark.sql.utils import AnalysisException
-
-@dlt.table(
-  name="output",
-  comment="Data that has been scanned without any PII being found or where PII has been found and redacted based on a set of predefined rules",
-  path=f"{TABLE_PATH}/output/",
-  table_properties={"pii_scanned" : "True", "pii_found": str(pii_detected)}
-)
-def output():
-  
-  try:
-    return dlt.read("redacted").drop("failed_expectations").unionByName(spark.table("LIVE.clean"))
-  except AnalysisException as e:
-    print(f"Caught exception due to mismatching schemas. Exception:\n{e}")
-    return dlt.read("redacted").drop("failed_expectations")
+df = df.selectExpr(redact_sql + ["failed_expectations"])
+display(df)
